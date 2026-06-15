@@ -1,7 +1,6 @@
 'use client'
 
 import Link from 'next/link'
-import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { useState, useEffect } from 'react'
 import { cn } from '@/lib/utils'
@@ -45,16 +44,47 @@ export default function Navigation() {
           className="max-w-7xl mx-auto px-6 lg:px-12 flex items-center justify-between"
           style={{ height: '72px' }}
         >
-          {/* Logo */}
-          <Link href="/" className="flex items-center gap-2 group" aria-label="Oralis — Home">
-            <Image
-              src="/oralis-logo.png"
-              alt="Oralis"
-              width={120}
-              height={48}
-              className="h-10 w-auto object-contain"
-              priority
-            />
+          {/* Logo lockup */}
+          <Link href="/" className="flex items-center gap-3 group" aria-label="Oralis — Home">
+            {/* Framed archival-seal badge with cropped speaking-face + script icon */}
+            <span
+              className={cn(
+                'relative grid place-items-center h-12 w-[4.25rem] rounded-md overflow-hidden transition-all duration-500',
+                'bg-ivory border border-gold/50 shadow-sm',
+                'ring-1 ring-inset ring-navy/5 group-hover:border-gold',
+              )}
+            >
+              <span
+                aria-hidden="true"
+                className="absolute inset-0 bg-no-repeat transition-transform duration-500 group-hover:scale-105"
+                style={{
+                  backgroundImage: 'url(/oralis-logo.png)',
+                  backgroundSize: '303% 400%',
+                  backgroundPosition: '55% 22%',
+                }}
+              />
+              {/* corner accents */}
+              <span aria-hidden="true" className="pointer-events-none absolute left-1 top-1 h-1.5 w-1.5 border-l border-t border-gold/70" />
+              <span aria-hidden="true" className="pointer-events-none absolute right-1 bottom-1 h-1.5 w-1.5 border-r border-b border-gold/70" />
+            </span>
+            <span className="flex flex-col leading-none">
+              <span
+                className={cn(
+                  'font-display text-2xl font-bold tracking-tight transition-colors',
+                  scrolled || !isHome ? 'text-navy' : 'text-ivory',
+                )}
+              >
+                Oralis
+              </span>
+              <span
+                className={cn(
+                  'font-ui text-[10px] tracking-[0.25em] uppercase mt-0.5 transition-colors',
+                  scrolled || !isHome ? 'text-stone/70' : 'text-ivory/50',
+                )}
+              >
+                Cultural Memory
+              </span>
+            </span>
           </Link>
 
           {/* Desktop Links */}
@@ -144,8 +174,19 @@ export default function Navigation() {
             Contribute to the Archive
           </Link>
         </div>
-        <div className="px-10 pb-10 border-t border-ivory/10 pt-6">
-          <Image src="/oralis-logo.png" alt="Oralis" width={100} height={40} className="h-8 w-auto brightness-0 invert opacity-40" />
+        <div className="px-10 pb-10 border-t border-ivory/10 pt-6 flex items-center gap-3">
+          <span className="relative grid place-items-center h-10 w-14 rounded overflow-hidden bg-ivory border border-gold/40">
+            <span
+              aria-hidden="true"
+              className="absolute inset-0 bg-no-repeat"
+              style={{
+                backgroundImage: 'url(/oralis-logo.png)',
+                backgroundSize: '303% 400%',
+                backgroundPosition: '55% 22%',
+              }}
+            />
+          </span>
+          <span className="font-display text-lg font-bold text-ivory/60">Oralis</span>
         </div>
       </div>
     </>
