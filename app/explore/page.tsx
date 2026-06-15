@@ -1,9 +1,9 @@
 'use client'
 
 import { useState, useMemo } from 'react'
+import Link from 'next/link'
 import Navigation from '@/components/navigation'
 import Footer from '@/components/footer'
-import Link from 'next/link'
 import {
   LANGUAGES,
   VITALITY_STATUS_LABELS,
@@ -13,114 +13,100 @@ import {
 } from '@/lib/data'
 
 const CONTINENTS = ['All', 'Africa', 'Americas', 'Asia', 'Europe', 'Oceania']
-const STATUSES: Array<{ value: string; label: string }> = [
-  { value: 'all', label: 'All Statuses' },
-  { value: 'safe', label: 'Safe' },
-  { value: 'vulnerable', label: 'Vulnerable' },
-  { value: 'endangered', label: 'Endangered' },
-  { value: 'critically-endangered', label: 'Critically Endangered' },
-  { value: 'dormant', label: 'Dormant' },
+const STATUSES: { value: string; label: string }[] = [
+  { value: 'all',                    label: 'All statuses'          },
+  { value: 'safe',                   label: 'Safe'                  },
+  { value: 'vulnerable',             label: 'Vulnerable'            },
+  { value: 'endangered',             label: 'Endangered'            },
+  { value: 'critically-endangered',  label: 'Critically endangered' },
+  { value: 'dormant',                label: 'Dormant'               },
 ]
 
-function VitalityDot({ status }: { status: VitalityStatus }) {
-  const color = VITALITY_STATUS_COLORS[status]
-  return (
-    <span
-      className="inline-block w-2 h-2 rounded-full shrink-0"
-      style={{ backgroundColor: color }}
-      aria-hidden="true"
-    />
-  )
+// Equirectangular map — converts lat/lon to % coords
+function toXY(lat: number, lon: number) {
+  return { x: ((lon + 180) / 360) * 100, y: ((90 - lat) / 180) * 100 }
 }
 
-function LanguageCard({ lang }: { lang: (typeof LANGUAGES)[0] }) {
+function LanguageRow({ lang, isActive, onHover }: {
+  lang: (typeof LANGUAGES)[0]
+  isActive: boolean
+  onHover: (id: string | null) => void
+}) {
   const color = VITALITY_STATUS_COLORS[lang.status]
   return (
     <Link
       href={`/language/${lang.id}`}
-      className="group block border border-border hover:border-gold/50 bg-surface hover:bg-muted/30 transition-all p-6"
+      className={`group flex items-center gap-5 py-5 px-6 lg:px-8 border-b border-border transition-colors ${isActive ? 'bg-navy/5' : 'hover:bg-surface'}`}
+      onMouseEnter={() => onHover(lang.id)}
+      onMouseLeave={() => onHover(null)}
     >
-      <div className="flex items-start justify-between gap-3 mb-4">
-        <div>
-          <h3 className="font-display text-xl font-bold text-foreground leading-tight group-hover:text-earth transition-colors">
+      {/* Status dot */}
+      <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: color }} aria-hidden="true" />
+
+      {/* Language name */}
+      <div className="flex-1 min-w-0">
+        <div className="flex items-baseline gap-3">
+          <span className="font-display text-base font-bold text-navy leading-tight group-hover:text-gold transition-colors">
             {lang.name}
-          </h3>
-          <p className="font-body text-sm text-muted-foreground">{lang.nativeName}</p>
+          </span>
+          <span className="font-body text-sm text-stone hidden sm:inline">{lang.nativeName}</span>
         </div>
-        <span
-          className="font-mono text-xs font-medium px-2 py-0.5 rounded-sm shrink-0 mt-0.5"
-          style={{ backgroundColor: `${color}18`, color }}
-        >
-          {lang.iso.toUpperCase()}
-        </span>
-      </div>
-
-      <div className="flex items-center gap-2 mb-3">
-        <VitalityDot status={lang.status} />
-        <span className="font-ui text-xs font-medium" style={{ color }}>
-          {VITALITY_STATUS_LABELS[lang.status]}
-        </span>
-        <span className="font-ui text-xs text-muted-foreground/40">·</span>
-        <span className="font-ui text-xs text-muted-foreground">{lang.country}</span>
-      </div>
-
-      <p className="font-body text-sm text-muted-foreground leading-relaxed line-clamp-2 mb-4">
-        {lang.description}
-      </p>
-
-      {/* Vitality bar */}
-      <div className="mb-4">
-        <div className="flex justify-between font-ui text-xs text-muted-foreground mb-1.5">
-          <span>Vitality Score</span>
-          <span>{lang.vitalityScore}/100</span>
-        </div>
-        <div className="h-0.5 bg-border rounded-full overflow-hidden">
-          <div
-            className="h-full rounded-full transition-all"
-            style={{ width: `${lang.vitalityScore}%`, backgroundColor: color }}
-          />
+        <div className="flex items-center gap-3 mt-0.5 font-ui text-xs text-stone/60">
+          <span>{lang.country}</span>
+          <span aria-hidden="true">&middot;</span>
+          <span>{lang.family}</span>
         </div>
       </div>
 
-      <div className="flex items-center gap-4 text-xs font-ui text-muted-foreground/70">
-        <span>{formatSpeakers(lang.speakers)}</span>
-        <span className="w-1 h-1 rounded-full bg-border" />
-        <span>{lang.audioCount.toLocaleString()} recordings</span>
-        <span className="w-1 h-1 rounded-full bg-border" />
-        <span>{lang.storiesArchived} stories</span>
+      {/* Status label */}
+      <span
+        className="hidden md:inline font-ui text-[10px] tracking-[0.15em] uppercase shrink-0"
+        style={{ color }}
+      >
+        {VITALITY_STATUS_LABELS[lang.status]}
+      </span>
+
+      {/* Speakers */}
+      <span className="hidden lg:inline font-ui text-xs text-stone/60 shrink-0 w-24 text-right">
+        {formatSpeakers(lang.speakers)}
+      </span>
+
+      {/* Vitality score bar */}
+      <div className="hidden sm:flex items-center gap-2 w-24 shrink-0">
+        <div className="flex-1 h-px bg-border relative overflow-hidden">
+          <div className="absolute inset-y-0 left-0" style={{ width: `${lang.vitalityScore}%`, backgroundColor: color }} />
+        </div>
+        <span className="font-mono text-[10px] text-stone/50 w-6 text-right">{lang.vitalityScore}</span>
       </div>
 
-      <div className="mt-4 flex items-center gap-1.5 font-ui text-xs text-muted-foreground/40 group-hover:text-clay transition-colors">
-        <span>Explore archive</span>
-        <svg width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true" className="group-hover:translate-x-0.5 transition-transform">
-          <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      </div>
+      {/* Arrow */}
+      <svg width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true"
+        className="shrink-0 text-stone/25 group-hover:text-gold group-hover:translate-x-0.5 transition-all">
+        <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
     </Link>
   )
 }
 
 export default function ExplorePage() {
-  const [search, setSearch] = useState('')
+  const [search,    setSearch]    = useState('')
   const [continent, setContinent] = useState('All')
-  const [status, setStatus] = useState('all')
-  const [sortBy, setSortBy] = useState<'name' | 'vitality' | 'speakers' | 'contributions'>('vitality')
+  const [status,    setStatus]    = useState('all')
+  const [sortBy,    setSortBy]    = useState<'vitality' | 'name' | 'speakers'>('vitality')
+  const [hovered,   setHovered]   = useState<string | null>(null)
 
   const filtered = useMemo(() => {
     return LANGUAGES.filter((l) => {
-      const matchSearch =
-        !search ||
-        l.name.toLowerCase().includes(search.toLowerCase()) ||
-        l.country.toLowerCase().includes(search.toLowerCase()) ||
-        l.nativeName.toLowerCase().includes(search.toLowerCase())
-      const matchContinent = continent === 'All' || l.continent === continent
-      const matchStatus = status === 'all' || l.status === status
-      return matchSearch && matchContinent && matchStatus
+      const q = search.toLowerCase()
+      return (
+        (!search || l.name.toLowerCase().includes(q) || l.country.toLowerCase().includes(q) || l.nativeName.toLowerCase().includes(q)) &&
+        (continent === 'All' || l.continent === continent) &&
+        (status === 'all' || l.status === status)
+      )
     }).sort((a, b) => {
-      if (sortBy === 'name') return a.name.localeCompare(b.name)
-      if (sortBy === 'vitality') return a.vitalityScore - b.vitalityScore
-      if (sortBy === 'speakers') return b.speakers - a.speakers
-      if (sortBy === 'contributions') return b.audioCount - a.audioCount
+      if (sortBy === 'name')      return a.name.localeCompare(b.name)
+      if (sortBy === 'vitality')  return a.vitalityScore - b.vitalityScore
+      if (sortBy === 'speakers')  return b.speakers - a.speakers
       return 0
     })
   }, [search, continent, status, sortBy])
@@ -128,35 +114,116 @@ export default function ExplorePage() {
   return (
     <>
       <Navigation />
-      <main className="min-h-screen bg-background pt-20">
-        {/* Page header */}
-        <div className="bg-earth text-primary-foreground py-16 lg:py-24">
-          <div className="max-w-7xl mx-auto px-6 lg:px-12">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-8 h-px bg-gold/60" />
-              <span className="font-ui text-xs text-primary-foreground/40 tracking-widest uppercase">
-                Language Explorer
-              </span>
+      <main className="min-h-screen bg-background pt-[72px]">
+
+        {/* Page header — editorial */}
+        <div className="bg-navy text-ivory">
+          <div className="max-w-7xl mx-auto px-6 lg:px-16 py-20 lg:py-28">
+            <div className="flex items-center gap-4 mb-7">
+              <div className="w-8 h-px bg-gold/50" />
+              <span className="font-ui text-xs text-ivory/30 tracking-[0.2em] uppercase">Language Explorer</span>
             </div>
-            <h1 className="font-display text-5xl lg:text-6xl font-bold leading-tight mb-4 text-balance">
+            <h1 className="font-display font-bold text-ivory leading-tight text-balance mb-5"
+              style={{ fontSize: 'clamp(2.4rem, 5vw, 4rem)' }}>
               Explore the world&apos;s<br />linguistic heritage.
             </h1>
-            <p className="font-body text-primary-foreground/60 text-lg max-w-2xl">
-              Browse 2,847 documented languages across 147 countries. Filter by
-              region, vitality status, and contribution activity.
+            <p className="font-body text-ivory/45 text-lg max-w-xl">
+              2,847 documented languages across 147 countries. Navigate by
+              geography, vitality status, and community activity.
             </p>
           </div>
         </div>
 
-        {/* Filters */}
-        <div className="border-b border-border bg-surface sticky top-16 z-30">
-          <div className="max-w-7xl mx-auto px-6 lg:px-12 py-4 flex flex-wrap gap-4 items-center">
-            {/* Search */}
-            <div className="relative flex-1 min-w-[200px] max-w-sm">
-              <svg
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/50"
-                width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true"
+        {/* Map — spatial navigation */}
+        <div className="bg-navy border-b border-navy/80 relative" style={{ height: 'clamp(240px, 40vh, 380px)' }}>
+          <svg
+            viewBox="0 0 1000 500"
+            className="absolute inset-0 w-full h-full opacity-100"
+            aria-hidden="true"
+            preserveAspectRatio="xMidYMid meet"
+          >
+            {/* Graticules */}
+            {[-60,-30,0,30,60].map(lat => {
+              const y = ((90 - lat) / 180) * 500
+              return <line key={lat} x1="0" y1={y} x2="1000" y2={y} stroke="#C8A96B" strokeWidth="0.3" strokeDasharray="3,10" opacity="0.2" />
+            })}
+            {[-120,-60,0,60,120].map(lon => {
+              const x = ((lon + 180) / 360) * 1000
+              return <line key={lon} x1={x} y1="0" x2={x} y2="500" stroke="#C8A96B" strokeWidth="0.3" strokeDasharray="3,10" opacity="0.2" />
+            })}
+            {/* Continental outlines */}
+            <path d="M130,100 L170,70 L230,75 L265,105 L275,145 L255,190 L225,215 L195,200 L165,165 L140,130 Z"
+              fill="rgba(200,169,107,0.05)" stroke="#C8A96B" strokeWidth="0.6" opacity="0.4" />
+            <path d="M240,240 L275,230 L300,260 L295,330 L270,375 L245,380 L220,360 L215,310 L225,265 Z"
+              fill="rgba(200,169,107,0.05)" stroke="#C8A96B" strokeWidth="0.6" opacity="0.4" />
+            <path d="M455,85 L510,75 L535,95 L525,120 L500,135 L470,128 L450,108 Z"
+              fill="rgba(200,169,107,0.05)" stroke="#C8A96B" strokeWidth="0.6" opacity="0.4" />
+            <path d="M465,140 L525,128 L555,160 L555,235 L535,285 L505,305 L475,285 L460,232 L455,180 Z"
+              fill="rgba(200,169,107,0.05)" stroke="#C8A96B" strokeWidth="0.6" opacity="0.4" />
+            <path d="M535,80 L710,65 L750,95 L740,155 L700,172 L648,160 L600,170 L565,148 L538,115 Z"
+              fill="rgba(200,169,107,0.05)" stroke="#C8A96B" strokeWidth="0.6" opacity="0.4" />
+            <path d="M705,280 L770,268 L800,298 L788,345 L750,358 L712,342 L698,308 Z"
+              fill="rgba(200,169,107,0.05)" stroke="#C8A96B" strokeWidth="0.6" opacity="0.4" />
+          </svg>
+
+          {/* Language dots */}
+          {filtered.map((lang) => {
+            const { x, y } = toXY(lang.lat, lang.lon)
+            const color = VITALITY_STATUS_COLORS[lang.status]
+            const isHov = hovered === lang.id
+            return (
+              <Link
+                key={lang.id}
+                href={`/language/${lang.id}`}
+                className="absolute -translate-x-1/2 -translate-y-1/2 group z-10"
+                style={{ left: `${x}%`, top: `${y}%` }}
+                onMouseEnter={() => setHovered(lang.id)}
+                onMouseLeave={() => setHovered(null)}
+                aria-label={`${lang.name} — ${lang.country}`}
               >
+                <span
+                  className="block rounded-full transition-all duration-200"
+                  style={{
+                    width: isHov ? 14 : 9,
+                    height: isHov ? 14 : 9,
+                    backgroundColor: color,
+                    boxShadow: isHov ? `0 0 0 3px rgba(247,244,238,0.3)` : 'none',
+                  }}
+                />
+                {isHov && (
+                  <div className="absolute z-20 pointer-events-none" style={{ bottom: '130%', left: '50%', transform: 'translateX(-50%)', whiteSpace: 'nowrap' }}>
+                    <div className="bg-ivory border border-border px-3 py-1.5 shadow-lg">
+                      <p className="font-display text-xs font-bold text-navy">{lang.name}</p>
+                      <p className="font-ui text-[10px] text-stone">{lang.country}</p>
+                    </div>
+                  </div>
+                )}
+              </Link>
+            )
+          })}
+
+          {/* Map legend */}
+          <div className="absolute bottom-4 left-6 flex items-center gap-4">
+            {(['critically-endangered', 'endangered', 'vulnerable', 'safe'] as VitalityStatus[]).map((s) => (
+              <div key={s} className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full" style={{ backgroundColor: VITALITY_STATUS_COLORS[s] }} />
+                <span className="font-ui text-[10px] text-ivory/35 hidden sm:inline">{VITALITY_STATUS_LABELS[s]}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Count */}
+          <div className="absolute bottom-4 right-6">
+            <span className="font-ui text-[10px] text-ivory/25">{filtered.length} languages mapped</span>
+          </div>
+        </div>
+
+        {/* Filter bar */}
+        <div className="sticky top-[72px] z-30 bg-surface border-b border-border">
+          <div className="max-w-7xl mx-auto px-6 lg:px-16 py-4 flex flex-wrap gap-3 items-center">
+            {/* Search */}
+            <div className="relative">
+              <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-stone/40" width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true">
                 <circle cx="7" cy="7" r="5" stroke="currentColor" strokeWidth="1.5" />
                 <path d="M11 11l3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
               </svg>
@@ -164,21 +231,21 @@ export default function ExplorePage() {
                 type="search"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search languages..."
-                className="w-full pl-9 pr-4 py-2 font-ui text-sm bg-background border border-border rounded-sm focus:outline-none focus:border-earth text-foreground placeholder:text-muted-foreground/40"
+                placeholder="Search languages…"
+                className="pl-9 pr-4 py-2 font-ui text-sm bg-background border border-border focus:outline-none focus:border-navy text-navy placeholder:text-stone/40 w-52"
               />
             </div>
 
-            {/* Continent filter */}
+            {/* Continent pills */}
             <div className="flex items-center gap-1 flex-wrap">
               {CONTINENTS.map((c) => (
                 <button
                   key={c}
                   onClick={() => setContinent(c)}
-                  className={`font-ui text-xs px-3 py-1.5 rounded-sm transition-colors ${
+                  className={`font-ui text-xs px-3 py-1.5 transition-colors ${
                     continent === c
-                      ? 'bg-earth text-primary-foreground'
-                      : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                      ? 'bg-navy text-ivory'
+                      : 'text-stone hover:text-navy hover:bg-muted'
                   }`}
                 >
                   {c}
@@ -186,90 +253,58 @@ export default function ExplorePage() {
               ))}
             </div>
 
-            {/* Status filter */}
+            {/* Status */}
             <select
               value={status}
               onChange={(e) => setStatus(e.target.value)}
-              className="font-ui text-xs px-3 py-1.5 bg-background border border-border rounded-sm focus:outline-none focus:border-earth text-foreground"
+              className="font-ui text-xs px-3 py-1.5 bg-background border border-border focus:outline-none focus:border-navy text-navy"
             >
-              {STATUSES.map((s) => (
-                <option key={s.value} value={s.value}>{s.label}</option>
-              ))}
+              {STATUSES.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
             </select>
 
             {/* Sort */}
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
-              className="font-ui text-xs px-3 py-1.5 bg-background border border-border rounded-sm focus:outline-none focus:border-earth text-foreground"
+              className="font-ui text-xs px-3 py-1.5 bg-background border border-border focus:outline-none focus:border-navy text-navy"
             >
-              <option value="vitality">Sort: Most at risk</option>
-              <option value="name">Sort: Name A–Z</option>
-              <option value="speakers">Sort: Most speakers</option>
-              <option value="contributions">Sort: Most recordings</option>
+              <option value="vitality">Most at risk</option>
+              <option value="name">Name A–Z</option>
+              <option value="speakers">Most speakers</option>
             </select>
 
-            <span className="font-ui text-xs text-muted-foreground ml-auto">
+            <span className="font-ui text-xs text-stone/50 ml-auto">
               {filtered.length} language{filtered.length !== 1 ? 's' : ''}
             </span>
           </div>
-        </div>
 
-        {/* Map placeholder */}
-        <div className="bg-earth/5 border-b border-border">
-          <div className="max-w-7xl mx-auto px-6 lg:px-12 py-8">
-            <div className="relative h-48 lg:h-64 bg-earth/8 rounded-sm overflow-hidden flex items-center justify-center border border-border/50">
-              <div className="absolute inset-0 opacity-20"
-                style={{
-                  backgroundImage: `radial-gradient(circle at 20% 50%, rgba(74,52,40,0.3) 0%, transparent 50%),
-                    radial-gradient(circle at 80% 30%, rgba(140,90,60,0.2) 0%, transparent 40%)`,
-                }}
-              />
-              {/* Simulated map dots */}
-              {LANGUAGES.map((lang) => {
-                const x = ((lang.lon + 180) / 360) * 100
-                const y = ((90 - lang.lat) / 180) * 100
-                const color = VITALITY_STATUS_COLORS[lang.status]
-                return (
-                  <Link
-                    key={lang.id}
-                    href={`/language/${lang.id}`}
-                    className="absolute group"
-                    style={{ left: `${x}%`, top: `${y}%` }}
-                    title={lang.name}
-                  >
-                    <div
-                      className="w-2.5 h-2.5 rounded-full border border-surface/60 transition-transform group-hover:scale-150 cursor-pointer"
-                      style={{ backgroundColor: color }}
-                    />
-                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
-                      <div className="bg-earth text-primary-foreground px-2 py-1 rounded-sm text-xs font-ui whitespace-nowrap">
-                        {lang.name}
-                      </div>
-                    </div>
-                  </Link>
-                )
-              })}
-              <div className="absolute bottom-3 left-3 font-ui text-xs text-muted-foreground/50">
-                Geographic view — {LANGUAGES.length} languages mapped
-              </div>
-            </div>
+          {/* Column header */}
+          <div className="max-w-7xl mx-auto px-6 lg:px-16 py-2 flex items-center gap-5 border-t border-border">
+            <span className="w-2 shrink-0" aria-hidden="true" />
+            <span className="flex-1 font-ui text-[10px] text-stone/40 tracking-[0.15em] uppercase">Language</span>
+            <span className="hidden md:inline font-ui text-[10px] text-stone/40 tracking-[0.15em] uppercase w-36">Status</span>
+            <span className="hidden lg:inline font-ui text-[10px] text-stone/40 tracking-[0.15em] uppercase w-24 text-right">Speakers</span>
+            <span className="hidden sm:inline font-ui text-[10px] text-stone/40 tracking-[0.15em] uppercase w-24">Vitality</span>
+            <span className="w-4 shrink-0" aria-hidden="true" />
           </div>
         </div>
 
-        {/* Grid */}
-        <div className="max-w-7xl mx-auto px-6 lg:px-12 py-12">
+        {/* Language list */}
+        <div className="max-w-7xl mx-auto">
           {filtered.length === 0 ? (
-            <div className="py-24 text-center">
-              <p className="font-display text-2xl text-muted-foreground mb-2">No languages found</p>
-              <p className="font-body text-sm text-muted-foreground/60">Try adjusting your filters</p>
+            <div className="py-32 text-center">
+              <p className="font-display text-2xl text-stone mb-2">No languages found</p>
+              <p className="font-body text-sm text-stone/50">Try adjusting your filters</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-px bg-border">
+            <div>
               {filtered.map((lang) => (
-                <div key={lang.id} className="bg-background">
-                  <LanguageCard lang={lang} />
-                </div>
+                <LanguageRow
+                  key={lang.id}
+                  lang={lang}
+                  isActive={hovered === lang.id}
+                  onHover={setHovered}
+                />
               ))}
             </div>
           )}

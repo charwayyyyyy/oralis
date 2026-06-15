@@ -8,18 +8,18 @@
   --font-sans: var(--font-lora), 'Georgia', serif;
   --font-serif: var(--font-playfair), 'Georgia', serif;
   --font-mono: var(--font-ibm-plex-mono), 'Courier New', monospace;
-  --font-inter: var(--font-inter);
 
-  /* Brand palette — directly in @theme so Tailwind generates utilities */
-  --color-earth: #4A3428;
-  --color-clay: #8C5A3C;
-  --color-gold: #C8A96B;
-  --color-forest: #3E6B48;
-  --color-ivory: #F7F4EE;
-  --color-surface: #FDFBF7;
-  --color-charcoal: #1F1F1F;
+  /* Brand palette — logo-accurate */
+  --color-navy:   #1B2A5E;   /* face silhouette / logotype */
+  --color-navy-deep: #111C42; /* darker navy for depth */
+  --color-gold:   #C8A96B;   /* script characters */
+  --color-gold-pale: #E8D5A8; /* light gold tint */
+  --color-ivory:  #F7F4EE;   /* warm off-white background */
+  --color-surface: #FDFBF7;  /* cards / panels */
+  --color-stone:  #8A7968;   /* warm mid-tone neutral */
+  --color-ink:    #1A1814;   /* near-black for text */
 
-  /* Shadcn semantic tokens (resolved in :root) */
+  /* Semantic design tokens */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -61,42 +61,42 @@
 :root {
   color-scheme: light;
 
-  /* Semantic tokens */
+  /* Semantic tokens — navy-first palette */
   --background: #F7F4EE;
-  --foreground: #1F1F1F;
+  --foreground: #1A1814;
   --card: #FDFBF7;
-  --card-foreground: #1F1F1F;
+  --card-foreground: #1A1814;
   --popover: #FDFBF7;
-  --popover-foreground: #1F1F1F;
-  --primary: #4A3428;
+  --popover-foreground: #1A1814;
+  --primary: #1B2A5E;
   --primary-foreground: #F7F4EE;
-  --secondary: #8C5A3C;
-  --secondary-foreground: #F7F4EE;
-  --muted: #EDE8DF;
-  --muted-foreground: #6B5A4E;
+  --secondary: #C8A96B;
+  --secondary-foreground: #1A1814;
+  --muted: #EDE9E1;
+  --muted-foreground: #6B5F50;
   --accent: #C8A96B;
-  --accent-foreground: #1F1F1F;
+  --accent-foreground: #1A1814;
   --destructive: #9B3A2A;
-  --border: #D9CFC2;
-  --input: #E8E1D6;
-  --ring: #4A3428;
+  --border: #DDD8CE;
+  --input: #E8E3DA;
+  --ring: #1B2A5E;
 
-  --chart-1: #4A3428;
-  --chart-2: #8C5A3C;
-  --chart-3: #C8A96B;
-  --chart-4: #3E6B48;
-  --chart-5: #6B5A4E;
+  --chart-1: #1B2A5E;
+  --chart-2: #C8A96B;
+  --chart-3: #3E6B48;
+  --chart-4: #8A7968;
+  --chart-5: #9B3A2A;
 
-  --radius: 0.375rem;
+  --radius: 0.25rem;
 
   --sidebar: #FDFBF7;
-  --sidebar-foreground: #1F1F1F;
-  --sidebar-primary: #4A3428;
+  --sidebar-foreground: #1A1814;
+  --sidebar-primary: #1B2A5E;
   --sidebar-primary-foreground: #F7F4EE;
-  --sidebar-accent: #EDE8DF;
-  --sidebar-accent-foreground: #1F1F1F;
-  --sidebar-border: #D9CFC2;
-  --sidebar-ring: #4A3428;
+  --sidebar-accent: #EDE9E1;
+  --sidebar-accent-foreground: #1A1814;
+  --sidebar-border: #DDD8CE;
+  --sidebar-ring: #1B2A5E;
 }
 
 @layer base {
@@ -104,7 +104,7 @@
     @apply border-border outline-ring/50;
   }
   html {
-    @apply bg-background;
+    @apply bg-ivory;
     scroll-behavior: smooth;
   }
   body {
@@ -118,7 +118,6 @@
 }
 
 @layer utilities {
-  /* Typography helpers */
   .font-display {
     font-family: var(--font-playfair), 'Georgia', serif;
   }
@@ -129,14 +128,37 @@
     font-family: var(--font-inter), 'Helvetica Neue', sans-serif;
   }
 
-  /* Animations */
-  @keyframes waveform-pulse {
-    0%, 100% { opacity: 0.4; transform: scaleY(0.6); }
-    50% { opacity: 1; transform: scaleY(1); }
-  }
+  /* Map pulse dot */
   @keyframes map-pulse {
-    0% { box-shadow: 0 0 0 0 rgba(200, 169, 107, 0.4); }
-    70% { box-shadow: 0 0 0 10px rgba(200, 169, 107, 0); }
-    100% { box-shadow: 0 0 0 0 rgba(200, 169, 107, 0); }
+    0%   { box-shadow: 0 0 0 0   rgba(200,169,107,0.5); }
+    70%  { box-shadow: 0 0 0 10px rgba(200,169,107,0);   }
+    100% { box-shadow: 0 0 0 0   rgba(200,169,107,0);   }
+  }
+  .map-dot-pulse {
+    animation: map-pulse 2.5s ease-in-out infinite;
+  }
+
+  /* Waveform bars */
+  @keyframes waveform-pulse {
+    0%, 100% { transform: scaleY(0.35); opacity: 0.35; }
+    50%       { transform: scaleY(1);    opacity: 1;    }
+  }
+
+  /* Slow editorial fade-up */
+  @keyframes fade-up {
+    from { opacity: 0; transform: translateY(18px); }
+    to   { opacity: 1; transform: translateY(0);    }
+  }
+  .animate-fade-up {
+    animation: fade-up 0.9s ease forwards;
+  }
+
+  /* Vitality ring glow */
+  @keyframes vitality-breathe {
+    0%, 100% { opacity: 0.8; }
+    50%       { opacity: 1;   }
+  }
+  .vitality-breathe {
+    animation: vitality-breathe 3s ease-in-out infinite;
   }
 }

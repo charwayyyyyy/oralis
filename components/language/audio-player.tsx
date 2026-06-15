@@ -47,17 +47,17 @@ export default function AudioPlayer({ title, duration, contributor, date }: Prop
   const progressBarIndex = Math.floor((progress / 100) * WAVEFORM_BARS)
 
   return (
-    <div className="border border-border bg-surface p-5 hover:border-gold/30 transition-colors">
+    <div className="border border-border bg-surface p-5 hover:border-gold/50 transition-colors group">
       <div className="flex items-start justify-between gap-4 mb-4">
         <div>
-          <h4 className="font-display text-sm font-bold text-foreground mb-0.5">{title}</h4>
-          <div className="flex items-center gap-3 font-ui text-xs text-muted-foreground">
+          <h4 className="font-display text-sm font-bold text-navy mb-0.5">{title}</h4>
+          <div className="flex items-center gap-3 font-ui text-xs text-stone">
             <span>{contributor}</span>
-            <span className="w-1 h-1 rounded-full bg-border" />
+            <span className="w-1 h-1 rounded-full bg-border" aria-hidden="true" />
             <span>{date}</span>
           </div>
         </div>
-        <span className="font-mono text-xs text-muted-foreground shrink-0">{duration}</span>
+        <span className="font-mono text-xs text-stone/60 shrink-0">{duration}</span>
       </div>
 
       {/* Waveform */}
@@ -65,7 +65,7 @@ export default function AudioPlayer({ title, duration, contributor, date }: Prop
         <button
           onClick={togglePlay}
           aria-label={playing ? 'Pause' : 'Play'}
-          className="w-8 h-8 rounded-full bg-earth flex items-center justify-center shrink-0 hover:bg-clay transition-colors"
+          className="w-8 h-8 bg-navy flex items-center justify-center shrink-0 hover:bg-gold transition-colors"
         >
           {playing ? (
             <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true">
