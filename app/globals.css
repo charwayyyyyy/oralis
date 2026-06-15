@@ -3,54 +3,61 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* =========================================================
+   ORALIS DESIGN SYSTEM v2 — Navy + Gold palette (logo-matched)
+   Primary:   #1B2A5E  (navy — face silhouette)
+   Accent:    #C8A96B  (gold — script characters)
+   Background:#F7F4EE  (ivory)
+   ========================================================= */
+
 @theme inline {
   /* Typography */
-  --font-sans: var(--font-lora), 'Georgia', serif;
+  --font-sans:  var(--font-lora), 'Georgia', serif;
   --font-serif: var(--font-playfair), 'Georgia', serif;
-  --font-mono: var(--font-ibm-plex-mono), 'Courier New', monospace;
+  --font-mono:  var(--font-ibm-plex-mono), 'Courier New', monospace;
 
-  /* Brand palette — logo-accurate */
-  --color-navy:   #1B2A5E;   /* face silhouette / logotype */
-  --color-navy-deep: #111C42; /* darker navy for depth */
-  --color-gold:   #C8A96B;   /* script characters */
-  --color-gold-pale: #E8D5A8; /* light gold tint */
-  --color-ivory:  #F7F4EE;   /* warm off-white background */
-  --color-surface: #FDFBF7;  /* cards / panels */
-  --color-stone:  #8A7968;   /* warm mid-tone neutral */
-  --color-ink:    #1A1814;   /* near-black for text */
+  /* === Brand colour palette (generate bg-*, text-*, border-* utilities) === */
+  --color-navy:       #1B2A5E;
+  --color-navy-deep:  #111C42;
+  --color-gold:       #C8A96B;
+  --color-gold-pale:  #E8D5A8;
+  --color-ivory:      #F7F4EE;
+  --color-surface:    #FDFBF7;
+  --color-stone:      #8A7968;
+  --color-ink:        #1A1814;
 
-  /* Semantic design tokens */
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-card: var(--card);
-  --color-card-foreground: var(--card-foreground);
-  --color-popover: var(--popover);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-primary: var(--primary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-secondary: var(--secondary);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-muted: var(--muted);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-destructive: var(--destructive);
-  --color-border: var(--border);
-  --color-input: var(--input);
-  --color-ring: var(--ring);
-  --color-chart-1: var(--chart-1);
-  --color-chart-2: var(--chart-2);
-  --color-chart-3: var(--chart-3);
-  --color-chart-4: var(--chart-4);
-  --color-chart-5: var(--chart-5);
-  --color-sidebar: var(--sidebar);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-ring: var(--sidebar-ring);
+  /* === shadcn semantic tokens (resolved via :root below) === */
+  --color-background:          var(--background);
+  --color-foreground:          var(--foreground);
+  --color-card:                var(--card);
+  --color-card-foreground:     var(--card-foreground);
+  --color-popover:             var(--popover);
+  --color-popover-foreground:  var(--popover-foreground);
+  --color-primary:             var(--primary);
+  --color-primary-foreground:  var(--primary-foreground);
+  --color-secondary:           var(--secondary);
+  --color-secondary-foreground:var(--secondary-foreground);
+  --color-muted:               var(--muted);
+  --color-muted-foreground:    var(--muted-foreground);
+  --color-accent:              var(--accent);
+  --color-accent-foreground:   var(--accent-foreground);
+  --color-destructive:         var(--destructive);
+  --color-border:              var(--border);
+  --color-input:               var(--input);
+  --color-ring:                var(--ring);
+  --color-chart-1:             var(--chart-1);
+  --color-chart-2:             var(--chart-2);
+  --color-chart-3:             var(--chart-3);
+  --color-chart-4:             var(--chart-4);
+  --color-chart-5:             var(--chart-5);
+  --color-sidebar:                     var(--sidebar);
+  --color-sidebar-foreground:          var(--sidebar-foreground);
+  --color-sidebar-primary:             var(--sidebar-primary);
+  --color-sidebar-primary-foreground:  var(--sidebar-primary-foreground);
+  --color-sidebar-accent:              var(--sidebar-accent);
+  --color-sidebar-accent-foreground:   var(--sidebar-accent-foreground);
+  --color-sidebar-border:              var(--sidebar-border);
+  --color-sidebar-ring:                var(--sidebar-ring);
 
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
@@ -61,25 +68,25 @@
 :root {
   color-scheme: light;
 
-  /* Semantic tokens — navy-first palette */
-  --background: #F7F4EE;
-  --foreground: #1A1814;
-  --card: #FDFBF7;
-  --card-foreground: #1A1814;
-  --popover: #FDFBF7;
+  /* Shadcn semantic tokens */
+  --background:         #F7F4EE;
+  --foreground:         #1A1814;
+  --card:               #FDFBF7;
+  --card-foreground:    #1A1814;
+  --popover:            #FDFBF7;
   --popover-foreground: #1A1814;
-  --primary: #1B2A5E;
+  --primary:            #1B2A5E;
   --primary-foreground: #F7F4EE;
-  --secondary: #C8A96B;
+  --secondary:          #C8A96B;
   --secondary-foreground: #1A1814;
-  --muted: #EDE9E1;
-  --muted-foreground: #6B5F50;
-  --accent: #C8A96B;
-  --accent-foreground: #1A1814;
-  --destructive: #9B3A2A;
-  --border: #DDD8CE;
-  --input: #E8E3DA;
-  --ring: #1B2A5E;
+  --muted:              #EDE9E1;
+  --muted-foreground:   #6B5F50;
+  --accent:             #C8A96B;
+  --accent-foreground:  #1A1814;
+  --destructive:        #9B3A2A;
+  --border:             #DDD8CE;
+  --input:              #E8E3DA;
+  --ring:               #1B2A5E;
 
   --chart-1: #1B2A5E;
   --chart-2: #C8A96B;
@@ -89,14 +96,14 @@
 
   --radius: 0.25rem;
 
-  --sidebar: #FDFBF7;
-  --sidebar-foreground: #1A1814;
-  --sidebar-primary: #1B2A5E;
+  --sidebar:                    #FDFBF7;
+  --sidebar-foreground:         #1A1814;
+  --sidebar-primary:            #1B2A5E;
   --sidebar-primary-foreground: #F7F4EE;
-  --sidebar-accent: #EDE9E1;
-  --sidebar-accent-foreground: #1A1814;
-  --sidebar-border: #DDD8CE;
-  --sidebar-ring: #1B2A5E;
+  --sidebar-accent:             #EDE9E1;
+  --sidebar-accent-foreground:  #1A1814;
+  --sidebar-border:             #DDD8CE;
+  --sidebar-ring:               #1B2A5E;
 }
 
 @layer base {
@@ -104,7 +111,7 @@
     @apply border-border outline-ring/50;
   }
   html {
-    @apply bg-ivory;
+    background-color: #F7F4EE;
     scroll-behavior: smooth;
   }
   body {
@@ -128,23 +135,20 @@
     font-family: var(--font-inter), 'Helvetica Neue', sans-serif;
   }
 
-  /* Map pulse dot */
   @keyframes map-pulse {
-    0%   { box-shadow: 0 0 0 0   rgba(200,169,107,0.5); }
-    70%  { box-shadow: 0 0 0 10px rgba(200,169,107,0);   }
-    100% { box-shadow: 0 0 0 0   rgba(200,169,107,0);   }
+    0%   { box-shadow: 0 0 0 0   rgba(200, 169, 107, 0.5); }
+    70%  { box-shadow: 0 0 0 10px rgba(200, 169, 107, 0);   }
+    100% { box-shadow: 0 0 0 0   rgba(200, 169, 107, 0);   }
   }
   .map-dot-pulse {
     animation: map-pulse 2.5s ease-in-out infinite;
   }
 
-  /* Waveform bars */
   @keyframes waveform-pulse {
     0%, 100% { transform: scaleY(0.35); opacity: 0.35; }
     50%       { transform: scaleY(1);    opacity: 1;    }
   }
 
-  /* Slow editorial fade-up */
   @keyframes fade-up {
     from { opacity: 0; transform: translateY(18px); }
     to   { opacity: 1; transform: translateY(0);    }
@@ -153,7 +157,6 @@
     animation: fade-up 0.9s ease forwards;
   }
 
-  /* Vitality ring glow */
   @keyframes vitality-breathe {
     0%, 100% { opacity: 0.8; }
     50%       { opacity: 1;   }

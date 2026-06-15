@@ -90,7 +90,7 @@ export default function AudioPlayer({ title, duration, contributor, date }: Prop
                   i < progressBarIndex
                     ? 'var(--gold)'
                     : playing && Math.abs(i - progressBarIndex) < 3
-                    ? 'var(--clay)'
+                    ? '#C8A96B'
                     : 'var(--border)',
                 transform: playing && Math.abs(i - progressBarIndex) < 2 ? `scaleY(${1 + Math.random() * 0.3})` : 'scaleY(1)',
               }}

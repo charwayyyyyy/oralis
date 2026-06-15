@@ -90,7 +90,7 @@ export default function VitalityDashboard({ lang }: Props) {
                   className="h-full rounded-full"
                   style={{
                     width: `${score}%`,
-                    backgroundColor: score > 50 ? 'var(--forest)' : score > 25 ? 'var(--gold)' : 'var(--destructive)',
+                    backgroundColor: score > 50 ? '#1B2A5E' : score > 25 ? 'var(--gold)' : 'var(--destructive)',
                   }}
                 />
               </div>
