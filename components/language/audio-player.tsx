@@ -9,7 +9,7 @@ interface Props {
   date: string
 }
 
-const WAVEFORM_BARS = 48
+const WAVEFORM_BARS = 56
 
 function generateBars() {
   return Array.from({ length: WAVEFORM_BARS }, (_, i) => {
@@ -47,61 +47,78 @@ export default function AudioPlayer({ title, duration, contributor, date }: Prop
   const progressBarIndex = Math.floor((progress / 100) * WAVEFORM_BARS)
 
   return (
-    <div className="border border-border bg-surface p-5 hover:border-gold/50 transition-colors group">
+    <div className="glass-heavy rounded-xl p-5 hover:shadow-lg transition-all duration-300 group">
       <div className="flex items-start justify-between gap-4 mb-4">
         <div>
-          <h4 className="font-display text-sm font-bold text-navy mb-0.5">{title}</h4>
-          <div className="flex items-center gap-3 font-ui text-xs text-stone">
+          <h4 className="font-display text-sm font-bold text-navy mb-0.5 group-hover:text-gold transition-colors">{title}</h4>
+          <div className="flex items-center gap-3 font-ui text-xs text-stone/50">
             <span>{contributor}</span>
             <span className="w-1 h-1 rounded-full bg-border" aria-hidden="true" />
             <span>{date}</span>
           </div>
         </div>
-        <span className="font-mono text-xs text-stone/60 shrink-0">{duration}</span>
+        <span className="font-mono text-xs text-stone/40 shrink-0">{duration}</span>
       </div>
 
-      {/* Waveform */}
-      <div className="flex items-center gap-3 mb-3">
-        <button
-          onClick={togglePlay}
-          aria-label={playing ? 'Pause' : 'Play'}
-          className="w-8 h-8 bg-navy flex items-center justify-center shrink-0 hover:bg-gold transition-colors"
-        >
-          {playing ? (
-            <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true">
-              <rect x="1.5" y="1" width="2.5" height="8" rx="0.5" fill="white" />
-              <rect x="6" y="1" width="2.5" height="8" rx="0.5" fill="white" />
-            </svg>
-          ) : (
-            <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true">
-              <path d="M2 1.5l7 3.5-7 3.5V1.5z" fill="white" />
-            </svg>
-          )}
-        </button>
+      {/* Waveform with ambient glow when playing */}
+      <div className="relative">
+        {playing && (
+          <div
+            className="absolute inset-0 -m-2 rounded-xl pointer-events-none transition-opacity duration-500"
+            style={{
+              background: 'radial-gradient(ellipse 80% 100% at 50% 50%, rgba(200,169,107,0.06) 0%, transparent 70%)',
+              opacity: 0.8,
+            }}
+            aria-hidden="true"
+          />
+        )}
 
-        <div className="flex-1 flex items-end gap-px h-8" aria-hidden="true">
-          {bars.map((height, i) => (
-            <div
-              key={i}
-              className="flex-1 rounded-sm transition-all duration-75"
-              style={{
-                height: `${height * 100}%`,
-                backgroundColor:
-                  i < progressBarIndex
-                    ? 'var(--gold)'
-                    : playing && Math.abs(i - progressBarIndex) < 3
-                    ? '#C8A96B'
-                    : 'var(--border)',
-                transform: playing && Math.abs(i - progressBarIndex) < 2 ? `scaleY(${1 + Math.random() * 0.3})` : 'scaleY(1)',
-              }}
-            />
-          ))}
+        <div className="flex items-center gap-3 mb-3 relative">
+          <button
+            onClick={togglePlay}
+            aria-label={playing ? 'Pause' : 'Play'}
+            className="w-9 h-9 glass-navy rounded-lg flex items-center justify-center shrink-0 hover:bg-navy transition-colors"
+          >
+            {playing ? (
+              <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true">
+                <rect x="1.5" y="1" width="2.5" height="8" rx="0.5" fill="white" />
+                <rect x="6" y="1" width="2.5" height="8" rx="0.5" fill="white" />
+              </svg>
+            ) : (
+              <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true">
+                <path d="M2 1.5l7 3.5-7 3.5V1.5z" fill="white" />
+              </svg>
+            )}
+          </button>
+
+          <div className="flex-1 flex items-end gap-px h-10" aria-hidden="true">
+            {bars.map((height, i) => {
+              const isPast = i < progressBarIndex
+              const isNear = playing && Math.abs(i - progressBarIndex) < 3
+              return (
+                <div
+                  key={i}
+                  className="flex-1 rounded-sm transition-all duration-100"
+                  style={{
+                    height: `${height * 100}%`,
+                    backgroundColor: isPast
+                      ? '#C8A96B'
+                      : isNear
+                      ? 'rgba(200,169,107,0.5)'
+                      : 'rgba(221,216,206,0.3)',
+                    transform: playing && Math.abs(i - progressBarIndex) < 2 ? `scaleY(${1 + Math.random() * 0.3})` : 'scaleY(1)',
+                    boxShadow: isPast ? '0 0 3px rgba(200,169,107,0.2)' : 'none',
+                  }}
+                />
+              )
+            })}
+          </div>
         </div>
       </div>
 
       {/* Progress track */}
       <div
-        className="h-px bg-border rounded-full overflow-hidden cursor-pointer"
+        className="h-1 bg-border/20 rounded-full overflow-hidden cursor-pointer"
         onClick={(e) => {
           const rect = e.currentTarget.getBoundingClientRect()
           const pct = (e.clientX - rect.left) / rect.width * 100
@@ -114,7 +131,11 @@ export default function AudioPlayer({ title, duration, contributor, date }: Prop
       >
         <div
           className="h-full rounded-full transition-all"
-          style={{ width: `${progress}%`, backgroundColor: 'var(--gold)' }}
+          style={{
+            width: `${progress}%`,
+            background: 'linear-gradient(90deg, rgba(200,169,107,0.6), #C8A96B)',
+            boxShadow: '0 0 6px rgba(200,169,107,0.3)',
+          }}
         />
       </div>
     </div>

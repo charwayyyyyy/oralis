@@ -1,339 +1,303 @@
 'use client'
 
-import { useState } from 'react'
-import { SAMPLE_CONTRIBUTOR, RECENT_CONTRIBUTIONS, LANGUAGES, formatNumber } from '@/lib/data'
+import { useRef, useEffect, useState } from 'react'
 import Link from 'next/link'
-import { VITALITY_STATUS_COLORS } from '@/lib/data'
+import {
+  LANGUAGES,
+  RECENT_CONTRIBUTIONS,
+  VITALITY_STATUS_COLORS,
+} from '@/lib/data'
 
-const TABS = ['Overview', 'Contributions', 'Languages', 'Impact'] as const
-type Tab = typeof TABS[number]
+function useInView(ref: React.RefObject<HTMLElement | null>, threshold = 0.15) {
+  const [isInView, setIsInView] = useState(false)
+  useEffect(() => {
+    if (!ref.current) return
+    const observer = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) setIsInView(true) },
+      { threshold }
+    )
+    observer.observe(ref.current)
+    return () => observer.disconnect()
+  }, [ref, threshold])
+  return isInView
+}
 
-const TIMELINE_CONTRIBUTIONS = [
-  ...RECENT_CONTRIBUTIONS,
-  {
-    id: '7',
-    languageId: 'mapudungun',
-    languageName: 'Mapudungun',
-    type: 'vocabulary' as const,
-    title: 'Agricultural calendar — 180 seasonal terms',
-    contributor: 'Dr. Amara Osei-Bonsu',
-    location: 'Temuco, Chile (remote)',
-    date: '2 weeks ago',
-    verified: true,
-    excerpt: 'Complete vocabulary for the Mapuche agricultural calendar, recorded with elder community members.',
-  },
-  {
-    id: '8',
-    languageId: 'livonian',
-    languageName: 'Livonian',
-    type: 'story' as const,
-    title: 'Coastal fishing songs — 3 traditional recordings',
-    contributor: 'Dr. Amara Osei-Bonsu',
-    location: 'Oxford, UK',
-    date: '3 weeks ago',
-    verified: true,
-    excerpt: 'Audio documentation of traditional Livonian fishing songs, annotated with ethnographic context.',
-  },
+function NarrativeBlock({ children, delay = 0 }: { children: React.ReactNode; delay?: number }) {
+  const ref = useRef<HTMLDivElement>(null)
+  const inView = useInView(ref)
+  return (
+    <div
+      ref={ref}
+      style={{
+        opacity: inView ? 1 : 0,
+        transform: inView ? 'translateY(0)' : 'translateY(24px)',
+        transition: `opacity 0.8s ease ${delay}ms, transform 0.8s cubic-bezier(0.16, 1, 0.3, 1) ${delay}ms`,
+      }}
+    >
+      {children}
+    </div>
+  )
+}
+
+const PROFILE = {
+  name: 'Dr. Kwame Osei-Bonsu',
+  role: 'Cultural Guardian',
+  joinDate: 'Joined March 2024',
+  languages: ['Twi', 'Ga', 'Ewe', 'Fante'],
+  totalContributions: 47,
+  audioHours: 12.5,
+  storiesArchived: 8,
+  continents: ['Africa', 'Americas', 'Europe', 'Asia'],
+  validationScore: 94,
+}
+
+const CONTRIBUTED_LANGUAGES = LANGUAGES.slice(0, 5)
+
+const BADGES = [
+  { name: 'First Voice',        desc: 'Made your first audio contribution',   earned: true, icon: '◉' },
+  { name: 'Story Keeper',       desc: 'Archived 5+ oral traditions',         earned: true, icon: '◇' },
+  { name: 'Cross-Continental',  desc: 'Contributed across 3+ continents',    earned: true, icon: '◈' },
+  { name: 'Guardian Circle',    desc: 'Invited 10+ new guardians',           earned: false, icon: '◎' },
+  { name: 'Elder Recognition',  desc: 'Verified by a community elder',      earned: false, icon: '◆' },
 ]
 
-const IMPACT_STATS = [
-  { label: 'Languages Contributed To',   value: 14  },
-  { label: 'Communities Reached',         value: 28  },
-  { label: 'Researchers Assisted',        value: 63  },
-  { label: 'Hours of Audio Preserved',    value: 142 },
-]
+function toXY(lat: number, lon: number) {
+  return { x: ((lon + 180) / 360) * 100, y: ((90 - lat) / 180) * 100 }
+}
 
 export default function UserProfile() {
-  const [activeTab, setActiveTab] = useState<Tab>('Overview')
-  const user = SAMPLE_CONTRIBUTOR
-
   return (
-    <div className="min-h-screen bg-background">
+    <div className="max-w-7xl mx-auto px-6 lg:px-16 py-16 lg:py-24">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16">
 
-      {/* ─── Profile header ──────────────────────────────── */}
-      <div className="bg-navy text-ivory py-16 lg:py-20">
-        <div className="max-w-7xl mx-auto px-6 lg:px-16">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-end">
-
-            {/* Identity */}
-            <div className="lg:col-span-8">
-              <div className="flex items-center gap-4 mb-8">
-                <div className="w-8 h-px bg-gold/50" />
-                <span className="font-ui text-xs text-ivory/25 tracking-[0.2em] uppercase">Contributor Profile</span>
-              </div>
-              <div className="flex items-center gap-5 mb-5">
-                <div className="w-14 h-14 border border-gold/30 flex items-center justify-center shrink-0 bg-gold/10">
-                  <span className="font-display text-2xl font-bold text-gold">
-                    {user.name.charAt(0)}
-                  </span>
+        {/* ─── Left: identity + footprint map ────── */}
+        <div className="lg:col-span-5">
+          {/* Profile card */}
+          <NarrativeBlock>
+            <div className="glass-heavy rounded-xl p-8 mb-6">
+              <div className="flex items-start gap-5 mb-6">
+                <div className="w-16 h-16 rounded-full bg-navy/5 border-2 border-gold/20 flex items-center justify-center shrink-0">
+                  <span className="font-display text-2xl font-bold text-navy/30">KO</span>
                 </div>
                 <div>
-                  <h1 className="font-display text-3xl lg:text-4xl font-bold text-ivory leading-tight">{user.name}</h1>
-                  <p className="font-body text-ivory/40">{user.location}</p>
+                  <h2 className="font-display text-xl font-bold text-navy">{PROFILE.name}</h2>
+                  <p className="font-ui text-xs text-gold tracking-wide">{PROFILE.role}</p>
+                  <p className="font-ui text-xs text-stone/40 mt-1">{PROFILE.joinDate}</p>
                 </div>
               </div>
-              <p className="font-body text-ivory/50 leading-relaxed max-w-xl">{user.bio}</p>
-            </div>
 
-            {/* Stats */}
-            <div className="lg:col-span-4">
-              <div className="grid grid-cols-2 gap-px bg-ivory/10">
-                {[
-                  { label: 'Contributions', value: formatNumber(user.contributions) },
-                  { label: 'Verified',       value: formatNumber(user.verifiedCount) },
-                  { label: 'Reputation',     value: `${user.reputationScore}/100`    },
-                  { label: 'Member since',   value: user.joinDate                    },
-                ].map(({ label, value }) => (
-                  <div key={label} className="bg-navy p-5">
-                    <p className="font-display text-2xl font-bold text-gold mb-0.5">{value}</p>
-                    <p className="font-ui text-[11px] text-ivory/30">{label}</p>
+              {/* Journey narrative */}
+              <p className="font-body text-stone/60 leading-relaxed text-sm mb-6">
+                {PROFILE.name.split(' ')[1]} has touched {CONTRIBUTED_LANGUAGES.length} languages across{' '}
+                {PROFILE.continents.length} continents, weaving {PROFILE.totalContributions} threads into
+                the atlas — {PROFILE.audioHours} hours of sound, {PROFILE.storiesArchived} oral traditions,
+                and countless words preserved for future generations.
+              </p>
+
+              {/* Languages */}
+              <div className="flex flex-wrap gap-2 mb-6">
+                {PROFILE.languages.map((l) => (
+                  <span key={l} className="font-ui text-[11px] px-3 py-1.5 glass-gold rounded-lg text-navy/60">
+                    {l}
+                  </span>
+                ))}
+              </div>
+
+              {/* Action */}
+              <div className="flex gap-3">
+                <button className="font-ui text-xs px-4 py-2.5 glass-navy-heavy text-ivory rounded-lg hover:bg-navy transition-colors">
+                  Edit Profile
+                </button>
+                <button className="font-ui text-xs px-4 py-2.5 glass rounded-lg text-stone hover:text-navy transition-colors">
+                  Export Archive
+                </button>
+              </div>
+            </div>
+          </NarrativeBlock>
+
+          {/* Cultural footprint map */}
+          <NarrativeBlock delay={100}>
+            <div className="glass-heavy rounded-xl p-6 mb-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-5 h-px bg-gold/40" />
+                <h3 className="font-ui text-[11px] text-stone tracking-[0.18em] uppercase">Cultural Footprint</h3>
+              </div>
+
+              <div className="relative bg-navy-abyss rounded-lg overflow-hidden" style={{ height: '180px' }}>
+                <svg viewBox="0 0 1000 500" className="absolute inset-0 w-full h-full" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+                  {[-60,-30,0,30,60].map(lat => {
+                    const y = ((90 - lat) / 180) * 500
+                    return <line key={lat} x1="0" y1={y} x2="1000" y2={y} stroke="#C8A96B" strokeWidth="0.3" strokeDasharray="2,12" opacity="0.08" />
+                  })}
+                  {[-120,-60,0,60,120].map(lon => {
+                    const x = ((lon + 180) / 360) * 1000
+                    return <line key={lon} x1={x} y1="0" x2={x} y2="500" stroke="#C8A96B" strokeWidth="0.3" strokeDasharray="2,12" opacity="0.08" />
+                  })}
+                </svg>
+
+                {/* Your language dots */}
+                {CONTRIBUTED_LANGUAGES.map((lang) => {
+                  const { x, y } = toXY(lang.lat, lang.lon)
+                  return (
+                    <div
+                      key={lang.id}
+                      className="absolute -translate-x-1/2 -translate-y-1/2 z-10"
+                      style={{ left: `${x}%`, top: `${y}%` }}
+                    >
+                      <span className="block w-3 h-3 rounded-full bg-gold animate-glow-breathe"
+                        style={{ boxShadow: '0 0 12px rgba(200,169,107,0.4)', '--vitality-glow-intensity': '0.3' } as React.CSSProperties} />
+                    </div>
+                  )
+                })}
+              </div>
+
+              <p className="font-ui text-[10px] text-stone/30 mt-3 text-center">
+                {CONTRIBUTED_LANGUAGES.length} languages touched across {PROFILE.continents.length} continents
+              </p>
+            </div>
+          </NarrativeBlock>
+
+          {/* Cultural marks (badges) */}
+          <NarrativeBlock delay={200}>
+            <div className="glass-heavy rounded-xl p-6">
+              <div className="flex items-center gap-3 mb-5">
+                <div className="w-5 h-px bg-gold/40" />
+                <h3 className="font-ui text-[11px] text-stone tracking-[0.18em] uppercase">Cultural Marks</h3>
+              </div>
+              <div className="space-y-3">
+                {BADGES.map((badge) => (
+                  <div
+                    key={badge.name}
+                    className={`flex items-center gap-4 p-3 rounded-lg transition-colors ${
+                      badge.earned ? 'glass-gold' : 'opacity-40'
+                    }`}
+                  >
+                    <span className={`text-xl ${badge.earned ? 'text-gold' : 'text-stone/30'}`}>{badge.icon}</span>
+                    <div>
+                      <p className={`font-ui text-sm font-medium ${badge.earned ? 'text-navy' : 'text-stone/50'}`}>{badge.name}</p>
+                      <p className="font-body text-[11px] text-stone/40">{badge.desc}</p>
+                    </div>
+                    {badge.earned && (
+                      <svg className="ml-auto shrink-0" width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+                        <path d="M3 7l3 3 5-5" stroke="#C8A96B" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    )}
                   </div>
                 ))}
               </div>
             </div>
-          </div>
+          </NarrativeBlock>
         </div>
-      </div>
 
-      {/* ─── Tab bar ─────────────────────────────────────── */}
-      <div className="border-b border-border bg-surface sticky top-[72px] z-30">
-        <div className="max-w-7xl mx-auto px-6 lg:px-16">
-          <nav className="flex" aria-label="Profile sections">
-            {TABS.map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`font-ui text-sm px-5 py-4 border-b-2 transition-all ${
-                  activeTab === tab
-                    ? 'border-gold text-navy font-medium'
-                    : 'border-transparent text-stone hover:text-navy'
-                }`}
-                aria-current={activeTab === tab ? 'page' : undefined}
-              >
-                {tab}
-              </button>
-            ))}
-          </nav>
-        </div>
-      </div>
-
-      {/* ─── Tab content ─────────────────────────────────── */}
-      <div className="max-w-7xl mx-auto px-6 lg:px-16 py-16 lg:py-20">
-
-        {/* Overview */}
-        {activeTab === 'Overview' && (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16">
-            <div className="lg:col-span-8 space-y-12">
-
-              {/* Reputation */}
-              <div className="border border-border bg-surface p-8">
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="w-5 h-px bg-gold" aria-hidden="true" />
-                  <h3 className="font-ui text-[11px] text-stone tracking-[0.18em] uppercase">Reputation Score</h3>
-                </div>
-                <div className="flex items-end justify-between mb-3">
-                  <span className="font-ui text-xs text-stone">Community rating</span>
-                  <span className="font-display text-4xl font-bold text-navy">{user.reputationScore}<span className="font-ui text-lg text-stone/40">/100</span></span>
-                </div>
-                <div className="h-px bg-border relative overflow-hidden mb-6">
-                  <div className="absolute inset-y-0 left-0 h-full bg-gold" style={{ width: `${user.reputationScore}%` }} />
-                </div>
-                <div className="grid grid-cols-3 gap-6 pt-5 border-t border-border">
-                  {[
-                    { label: 'Accuracy',         value: '98%'   },
-                    { label: 'Completeness',      value: '94%'   },
-                    { label: 'Community rating',  value: '4.9/5' },
-                  ].map(({ label, value }) => (
-                    <div key={label} className="text-center">
-                      <p className="font-display text-xl font-bold text-navy mb-0.5">{value}</p>
-                      <p className="font-ui text-[11px] text-stone">{label}</p>
-                    </div>
-                  ))}
-                </div>
+        {/* ─── Right: contribution timeline + impact ── */}
+        <div className="lg:col-span-7">
+          {/* Impact story */}
+          <NarrativeBlock>
+            <div className="glass-heavy rounded-xl p-8 lg:p-10 mb-8">
+              <div className="flex items-center gap-3 mb-5">
+                <div className="w-6 h-px bg-gold/40" />
+                <h3 className="font-ui text-[11px] text-stone tracking-[0.18em] uppercase">Your Impact</h3>
               </div>
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                {[
+                  { value: PROFILE.totalContributions.toString(), label: 'Contributions' },
+                  { value: `${PROFILE.audioHours}h`, label: 'Audio preserved' },
+                  { value: PROFILE.storiesArchived.toString(), label: 'Stories archived' },
+                  { value: `${PROFILE.validationScore}%`, label: 'Validation rate' },
+                ].map(({ value, label }) => (
+                  <div key={label} className="glass rounded-lg p-4 text-center">
+                    <p className="font-display text-2xl font-bold text-navy mb-1">{value}</p>
+                    <p className="font-ui text-[10px] text-stone/50 tracking-wide">{label}</p>
+                  </div>
+                ))}
+              </div>
+              <p className="font-body text-sm text-stone/60 leading-relaxed">
+                Your contributions have been accessed by 1,200+ researchers, educators, and community
+                members across 38 countries. The oral traditions you archived are now being used in two
+                community-led revitalization programs.
+              </p>
+            </div>
+          </NarrativeBlock>
 
-              {/* Recent activity */}
-              <div>
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="w-5 h-px bg-gold" aria-hidden="true" />
-                  <h3 className="font-ui text-[11px] text-stone tracking-[0.18em] uppercase">Recent Activity</h3>
-                </div>
-                <div className="divide-y divide-border">
-                  {TIMELINE_CONTRIBUTIONS.slice(0, 5).map((c) => (
-                    <div key={c.id} className="py-5 flex items-start gap-4">
-                      <span className="w-1.5 h-1.5 rounded-full bg-gold mt-2 shrink-0" aria-hidden="true" />
-                      <div className="flex-1">
-                        <div className="flex items-start justify-between gap-3">
+          {/* Contribution timeline */}
+          <NarrativeBlock delay={100}>
+            <div className="mb-8">
+              <div className="flex items-center gap-4 mb-8">
+                <div className="w-8 h-px bg-gold/40" />
+                <h3 className="font-ui text-[11px] text-stone tracking-[0.18em] uppercase">Contribution Journey</h3>
+              </div>
+              <div className="relative pl-8 space-y-0">
+                {/* Timeline line */}
+                <div className="absolute left-3 top-2 bottom-2 w-px bg-gradient-to-b from-gold/30 via-gold/15 to-transparent" />
+
+                {RECENT_CONTRIBUTIONS.map((c, i) => (
+                  <NarrativeBlock key={c.id} delay={i * 60}>
+                    <div className="relative pb-8 last:pb-0">
+                      {/* Timeline dot */}
+                      <span className="absolute -left-5 top-1 w-3 h-3 rounded-full border-2 border-ivory bg-gold shadow-sm" />
+
+                      <div className="glass-heavy rounded-xl p-5 hover:shadow-md transition-all group ml-4">
+                        <div className="flex items-start justify-between gap-3 mb-2">
                           <div>
-                            <p className="font-display text-sm font-bold text-navy leading-snug">{c.title}</p>
-                            <div className="flex items-center gap-2 mt-1 font-ui text-xs text-stone">
-                              <Link href={`/language/${c.languageId}`} className="text-gold hover:text-navy transition-colors">
-                                {c.languageName}
-                              </Link>
-                              <span aria-hidden="true">&middot;</span>
-                              <span className="capitalize">{c.type.replace('-', ' ')}</span>
-                              {c.verified && (
-                                <><span aria-hidden="true">&middot;</span>
-                                <span className="text-green-700">Verified</span></>
-                              )}
-                            </div>
+                            <h4 className="font-display text-base font-bold text-navy group-hover:text-gold transition-colors">{c.title}</h4>
+                            <p className="font-body text-xs text-stone/50 italic mt-0.5">{c.languageName}</p>
                           </div>
-                          <span className="font-ui text-xs text-stone/40 shrink-0">{c.date}</span>
+                          <span className="font-ui text-[10px] text-stone/30 shrink-0">{c.date}</span>
+                        </div>
+                        <div className="flex items-center gap-3 font-ui text-[11px] text-stone/40">
+                          <span className="px-2 py-0.5 glass-gold rounded text-gold/80 text-[10px]">{c.type}</span>
+                          {c.verified && (
+                            <span className="flex items-center gap-1 text-green-700">
+                              <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true">
+                                <path d="M2 5l2 2 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                              </svg>
+                              Verified
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>
-                  ))}
-                </div>
+                  </NarrativeBlock>
+                ))}
               </div>
             </div>
+          </NarrativeBlock>
 
-            {/* Sidebar */}
-            <aside className="lg:col-span-4 space-y-8">
-
-              {/* Languages */}
-              <div className="border border-border bg-surface p-6">
-                <div className="flex items-center gap-3 mb-5">
-                  <div className="w-4 h-px bg-gold" aria-hidden="true" />
-                  <h3 className="font-ui text-[11px] text-stone tracking-[0.18em] uppercase">Languages</h3>
-                </div>
-                <div className="divide-y divide-border">
-                  {user.languages.map((lang) => (
-                    <div key={lang} className="flex items-center justify-between py-2.5">
-                      <span className="font-display text-sm font-bold text-navy">{lang}</span>
-                      <span className="font-ui text-[11px] text-stone/50">Active</span>
-                    </div>
-                  ))}
-                </div>
-                <p className="mt-4 font-ui text-[11px] text-stone/40">+10 more documented</p>
+          {/* Languages contributed to */}
+          <NarrativeBlock delay={200}>
+            <div>
+              <div className="flex items-center gap-4 mb-6">
+                <div className="w-8 h-px bg-gold/40" />
+                <h3 className="font-ui text-[11px] text-stone tracking-[0.18em] uppercase">Languages You&apos;ve Touched</h3>
               </div>
-
-              {/* Recognition */}
-              <div className="border border-border bg-surface p-6">
-                <div className="flex items-center gap-3 mb-5">
-                  <div className="w-4 h-px bg-gold" aria-hidden="true" />
-                  <h3 className="font-ui text-[11px] text-stone tracking-[0.18em] uppercase">Recognition</h3>
-                </div>
-                <div className="space-y-4">
-                  {[
-                    { label: 'Master Linguist',   desc: '500+ verified contributions' },
-                    { label: 'Cultural Steward',   desc: '10+ languages documented'    },
-                    { label: 'Elder Recorder',     desc: '50+ native speaker recordings' },
-                  ].map(({ label, desc }) => (
-                    <div key={label} className="flex items-start gap-3">
-                      <div className="w-6 h-6 border border-gold/30 flex items-center justify-center shrink-0">
-                        <span className="text-gold text-[10px]">&#9670;</span>
+              <div className="space-y-3">
+                {CONTRIBUTED_LANGUAGES.map((lang) => {
+                  const color = VITALITY_STATUS_COLORS[lang.status]
+                  return (
+                    <Link
+                      key={lang.id}
+                      href={`/language/${lang.id}`}
+                      className="glass-heavy rounded-xl p-5 flex items-center gap-4 group hover:shadow-lg transition-all"
+                    >
+                      <span className="w-3 h-3 rounded-full shrink-0 animate-glow-breathe"
+                        style={{ backgroundColor: color, '--vitality-glow-intensity': '0.2' } as React.CSSProperties} />
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3">
+                          <span className="font-display text-base font-bold text-navy group-hover:text-gold transition-colors">{lang.name}</span>
+                          <span className="font-body text-sm text-stone/50 italic">{lang.nativeName}</span>
+                        </div>
+                        <span className="font-ui text-xs text-stone/40">{lang.country} · {lang.vitalityScore}/100</span>
                       </div>
-                      <div>
-                        <p className="font-ui text-xs font-medium text-navy">{label}</p>
-                        <p className="font-ui text-[11px] text-stone/50">{desc}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </aside>
-          </div>
-        )}
-
-        {/* Contributions */}
-        {activeTab === 'Contributions' && (
-          <div className="divide-y divide-border border border-border">
-            {TIMELINE_CONTRIBUTIONS.map((c) => (
-              <div key={c.id} className="p-6 hover:bg-surface transition-colors">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1.5 font-ui text-xs text-stone">
-                      <Link href={`/language/${c.languageId}`} className="text-gold hover:text-navy transition-colors font-medium">
-                        {c.languageName}
-                      </Link>
-                      <span aria-hidden="true">&middot;</span>
-                      <span className="capitalize">{c.type.replace('-', ' ')}</span>
-                      {c.verified && (
-                        <><span aria-hidden="true">&middot;</span>
-                        <span className="text-green-700 tracking-wide">Verified</span></>
-                      )}
-                    </div>
-                    <h3 className="font-display text-base font-bold text-navy mb-1">{c.title}</h3>
-                    {c.excerpt && (
-                      <p className="font-body text-sm text-stone line-clamp-2">{c.excerpt}</p>
-                    )}
-                  </div>
-                  <span className="font-ui text-xs text-stone/40 shrink-0 pt-0.5">{c.date}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Languages */}
-        {activeTab === 'Languages' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-px bg-border">
-            {LANGUAGES.slice(0, 6).map((lang) => (
-              <Link
-                key={lang.id}
-                href={`/language/${lang.id}`}
-                className="bg-surface p-7 hover:bg-ivory transition-colors group"
-              >
-                <h3 className="font-display text-xl font-bold text-navy group-hover:text-gold transition-colors mb-0.5">
-                  {lang.name}
-                </h3>
-                <p className="font-body text-sm text-stone mb-5">{lang.country}</p>
-                <div className="h-px bg-border relative overflow-hidden mb-3">
-                  <div
-                    className="absolute inset-y-0 left-0"
-                    style={{
-                      width: `${lang.vitalityScore}%`,
-                      backgroundColor: VITALITY_STATUS_COLORS[lang.status],
-                    }}
-                  />
-                </div>
-                <p className="font-ui text-xs text-stone/50">{lang.audioCount.toLocaleString()} recordings</p>
-              </Link>
-            ))}
-          </div>
-        )}
-
-        {/* Impact */}
-        {activeTab === 'Impact' && (
-          <div className="space-y-12">
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-px bg-border">
-              {IMPACT_STATS.map(({ label, value }) => (
-                <div key={label} className="bg-surface p-8 text-center">
-                  <p className="font-display text-5xl font-bold text-navy mb-2">{value.toLocaleString()}</p>
-                  <p className="font-ui text-xs text-stone">{label}</p>
-                </div>
-              ))}
-            </div>
-
-            <div className="bg-navy text-ivory p-10 lg:p-12">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-                <div>
-                  <p className="font-display text-xl lg:text-2xl font-bold text-ivory mb-5 text-balance">
-                    Dr. Osei-Bonsu&apos;s contributions to the Ainu archive helped establish the first
-                    Ainu-language elementary curriculum in Hokkaido.
-                  </p>
-                  <p className="font-body text-sm text-ivory/50 leading-relaxed">
-                    Her 2023 phonological analysis of Ainu tonal patterns, archived in Oralis, was
-                    cited in UNESCO&apos;s 2024 Endangered Languages Report and subsequently used by the
-                    Hokkaido Ainu Association to develop teaching materials.
-                  </p>
-                </div>
-                <div className="space-y-5">
-                  {[
-                    { num: '4',     desc: 'Peer-reviewed papers citing Oralis contributions'   },
-                    { num: '2',     desc: 'Government language programs informed'               },
-                    { num: '1,200', desc: 'Students using materials derived from her archive'  },
-                  ].map(({ num, desc }) => (
-                    <div key={desc} className="flex items-start gap-5 border-t border-ivory/10 pt-5">
-                      <span className="font-display text-4xl font-bold text-gold shrink-0">{num}</span>
-                      <span className="font-body text-sm text-ivory/50 pt-2">{desc}</span>
-                    </div>
-                  ))}
-                </div>
+                      <svg className="shrink-0 text-stone/20 group-hover:text-gold transition-colors" width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                        <path d="M5 3l6 5-6 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    </Link>
+                  )
+                })}
               </div>
             </div>
-          </div>
-        )}
+          </NarrativeBlock>
+        </div>
       </div>
     </div>
   )

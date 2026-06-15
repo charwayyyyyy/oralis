@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import { Playfair_Display, Lora, Inter, IBM_Plex_Mono } from 'next/font/google'
 import './globals.css'
+import PageTransition from '@/components/page-transition'
 
 const playfair = Playfair_Display({
   subsets: ['latin'],
@@ -31,13 +32,13 @@ const ibmPlexMono = IBM_Plex_Mono({
 })
 
 export const metadata: Metadata = {
-  title: 'Oralis — Global Cultural Memory Network',
+  title: 'Oralis — A Living Atlas of Human Cultural Memory',
   description:
-    'Preserve endangered languages, oral traditions, and cultural memory for future generations. A living archive of humanity\'s linguistic heritage.',
-  keywords: ['endangered languages', 'cultural preservation', 'oral traditions', 'indigenous languages', 'linguistic heritage'],
+    'Navigate humanity\'s linguistic heritage. 2,847 endangered languages, 186,200 hours of oral memory. A living cultural atlas built with communities, for all humanity.',
+  keywords: ['endangered languages', 'cultural preservation', 'oral traditions', 'indigenous languages', 'linguistic heritage', 'cultural atlas'],
   authors: [{ name: 'Oralis' }],
   openGraph: {
-    title: 'Oralis — Global Cultural Memory Network',
+    title: 'Oralis — A Living Atlas of Human Cultural Memory',
     description: 'Every language carries a world of knowledge.',
     type: 'website',
   },
@@ -45,7 +46,7 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   colorScheme: 'light',
-  themeColor: '#1B2A5E',
+  themeColor: '#0A1230',
   width: 'device-width',
   initialScale: 1,
 }
@@ -58,10 +59,12 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${playfair.variable} ${lora.variable} ${inter.variable} ${ibmPlexMono.variable} bg-background`}
+      className={`${playfair.variable} ${lora.variable} ${inter.variable} ${ibmPlexMono.variable} bg-navy-abyss`}
     >
       <body className="antialiased font-body">
-        {children}
+        <PageTransition>
+          {children}
+        </PageTransition>
       </body>
     </html>
   )

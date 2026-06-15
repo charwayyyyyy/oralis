@@ -4,10 +4,12 @@
 @custom-variant dark (&:is(.dark *));
 
 /* =========================================================
-   ORALIS DESIGN SYSTEM v2 — Navy + Gold palette (logo-matched)
+   ORALIS DESIGN SYSTEM v3 — Cultural Atlas Edition
    Primary:   #1B2A5E  (navy — face silhouette)
    Accent:    #C8A96B  (gold — script characters)
    Background:#F7F4EE  (ivory)
+
+   GLASSMORPHISM + VITALITY SYSTEM + SPATIAL ATLAS
    ========================================================= */
 
 @theme inline {
@@ -16,17 +18,27 @@
   --font-serif: var(--font-playfair), 'Georgia', serif;
   --font-mono:  var(--font-ibm-plex-mono), 'Courier New', monospace;
 
-  /* === Brand colour palette (generate bg-*, text-*, border-* utilities) === */
+  /* === Brand colour palette === */
   --color-navy:       #1B2A5E;
   --color-navy-deep:  #111C42;
+  --color-navy-abyss: #0A1230;
   --color-gold:       #C8A96B;
   --color-gold-pale:  #E8D5A8;
+  --color-gold-warm:  #D4B97A;
   --color-ivory:      #F7F4EE;
   --color-surface:    #FDFBF7;
   --color-stone:      #8A7968;
   --color-ink:        #1A1814;
 
-  /* === shadcn semantic tokens (resolved via :root below) === */
+  /* === Glassmorphism palette === */
+  --color-glass:            rgba(253, 251, 247, 0.6);
+  --color-glass-heavy:      rgba(253, 251, 247, 0.82);
+  --color-glass-navy:       rgba(27, 42, 94, 0.7);
+  --color-glass-navy-heavy: rgba(27, 42, 94, 0.88);
+  --color-glass-dark:       rgba(10, 18, 48, 0.65);
+  --color-glass-gold:       rgba(200, 169, 107, 0.12);
+
+  /* === shadcn semantic tokens === */
   --color-background:          var(--background);
   --color-foreground:          var(--foreground);
   --color-card:                var(--card);
@@ -104,6 +116,12 @@
   --sidebar-accent-foreground:  #1A1814;
   --sidebar-border:             #DDD8CE;
   --sidebar-ring:               #1B2A5E;
+
+  /* Vitality system — overridden per-element via inline styles */
+  --vitality-hue: 43;
+  --vitality-warmth: 0.5;
+  --vitality-glow-intensity: 0.15;
+  --vitality-pulse-speed: 3s;
 }
 
 @layer base {
@@ -111,7 +129,7 @@
     @apply border-border outline-ring/50;
   }
   html {
-    background-color: #F7F4EE;
+    background-color: #0A1230;
     scroll-behavior: smooth;
   }
   body {
@@ -125,6 +143,7 @@
 }
 
 @layer utilities {
+  /* ─── Typography ─────────────────────────────── */
   .font-display {
     font-family: var(--font-playfair), 'Georgia', serif;
   }
@@ -135,13 +154,155 @@
     font-family: var(--font-inter), 'Helvetica Neue', sans-serif;
   }
 
+  /* ─── Glassmorphism Surfaces ─────────────────── */
+  .glass {
+    background: rgba(253, 251, 247, 0.55);
+    backdrop-filter: blur(20px) saturate(1.4);
+    -webkit-backdrop-filter: blur(20px) saturate(1.4);
+    border: 1px solid rgba(221, 216, 206, 0.4);
+    box-shadow:
+      0 8px 32px rgba(27, 42, 94, 0.06),
+      inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  }
+
+  .glass-heavy {
+    background: rgba(253, 251, 247, 0.82);
+    backdrop-filter: blur(24px) saturate(1.5);
+    -webkit-backdrop-filter: blur(24px) saturate(1.5);
+    border: 1px solid rgba(221, 216, 206, 0.5);
+    box-shadow:
+      0 8px 32px rgba(27, 42, 94, 0.08),
+      inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  }
+
+  .glass-navy {
+    background: rgba(27, 42, 94, 0.65);
+    backdrop-filter: blur(24px) saturate(1.3);
+    -webkit-backdrop-filter: blur(24px) saturate(1.3);
+    border: 1px solid rgba(200, 169, 107, 0.12);
+    box-shadow:
+      0 8px 40px rgba(10, 18, 48, 0.25),
+      inset 0 1px 0 rgba(200, 169, 107, 0.08);
+  }
+
+  .glass-navy-heavy {
+    background: rgba(27, 42, 94, 0.88);
+    backdrop-filter: blur(28px) saturate(1.4);
+    -webkit-backdrop-filter: blur(28px) saturate(1.4);
+    border: 1px solid rgba(200, 169, 107, 0.15);
+    box-shadow:
+      0 12px 48px rgba(10, 18, 48, 0.35),
+      inset 0 1px 0 rgba(200, 169, 107, 0.1);
+  }
+
+  .glass-dark {
+    background: rgba(10, 18, 48, 0.6);
+    backdrop-filter: blur(20px) saturate(1.2);
+    -webkit-backdrop-filter: blur(20px) saturate(1.2);
+    border: 1px solid rgba(200, 169, 107, 0.08);
+    box-shadow: 0 8px 40px rgba(0, 0, 0, 0.3);
+  }
+
+  .glass-gold {
+    background: rgba(200, 169, 107, 0.08);
+    backdrop-filter: blur(16px) saturate(1.3);
+    -webkit-backdrop-filter: blur(16px) saturate(1.3);
+    border: 1px solid rgba(200, 169, 107, 0.2);
+    box-shadow:
+      0 4px 24px rgba(200, 169, 107, 0.06),
+      inset 0 1px 0 rgba(200, 169, 107, 0.12);
+  }
+
+  /* ─── Atlas spatial animations ───────────────── */
+  @keyframes atlas-zoom-in {
+    from {
+      opacity: 0;
+      transform: scale(0.92);
+      filter: blur(4px);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+      filter: blur(0);
+    }
+  }
+
+  @keyframes atlas-zoom-out {
+    from {
+      opacity: 1;
+      transform: scale(1);
+      filter: blur(0);
+    }
+    to {
+      opacity: 0;
+      transform: scale(1.06);
+      filter: blur(4px);
+    }
+  }
+
+  @keyframes layer-emerge {
+    from {
+      opacity: 0;
+      transform: translateY(24px) scale(0.98);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  @keyframes atlas-breathe {
+    0%, 100% { opacity: 0.6; transform: scale(1); }
+    50%      { opacity: 1;   transform: scale(1.01); }
+  }
+
+  @keyframes pulse-vital {
+    0%   { box-shadow: 0 0 0 0   var(--pulse-color, rgba(200, 169, 107, 0.5)); }
+    70%  { box-shadow: 0 0 0 12px var(--pulse-color, rgba(200, 169, 107, 0));   }
+    100% { box-shadow: 0 0 0 0   var(--pulse-color, rgba(200, 169, 107, 0));   }
+  }
+
+  @keyframes glow-breathe {
+    0%, 100% {
+      box-shadow: 0 0 20px rgba(200, 169, 107, var(--vitality-glow-intensity, 0.15));
+    }
+    50% {
+      box-shadow: 0 0 40px rgba(200, 169, 107, calc(var(--vitality-glow-intensity, 0.15) * 1.8));
+    }
+  }
+
+  @keyframes drift-slow {
+    0%   { transform: translateY(0)    translateX(0); }
+    25%  { transform: translateY(-8px) translateX(4px); }
+    50%  { transform: translateY(-4px) translateX(-3px); }
+    75%  { transform: translateY(-12px) translateX(2px); }
+    100% { transform: translateY(0)    translateX(0); }
+  }
+
+  @keyframes fade-up {
+    from { opacity: 0; transform: translateY(18px); }
+    to   { opacity: 1; transform: translateY(0);    }
+  }
+
+  @keyframes fade-up-slow {
+    from { opacity: 0; transform: translateY(32px); }
+    to   { opacity: 1; transform: translateY(0);    }
+  }
+
+  @keyframes shimmer {
+    0%   { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+
+  @keyframes heartbeat-line {
+    0%, 100% { transform: scaleY(0.3); }
+    50%      { transform: scaleY(1);   }
+  }
+
   @keyframes map-pulse {
     0%   { box-shadow: 0 0 0 0   rgba(200, 169, 107, 0.5); }
     70%  { box-shadow: 0 0 0 10px rgba(200, 169, 107, 0);   }
     100% { box-shadow: 0 0 0 0   rgba(200, 169, 107, 0);   }
-  }
-  .map-dot-pulse {
-    animation: map-pulse 2.5s ease-in-out infinite;
   }
 
   @keyframes waveform-pulse {
@@ -149,19 +310,96 @@
     50%       { transform: scaleY(1);    opacity: 1;    }
   }
 
-  @keyframes fade-up {
-    from { opacity: 0; transform: translateY(18px); }
-    to   { opacity: 1; transform: translateY(0);    }
-  }
-  .animate-fade-up {
-    animation: fade-up 0.9s ease forwards;
-  }
-
   @keyframes vitality-breathe {
     0%, 100% { opacity: 0.8; }
     50%       { opacity: 1;   }
   }
+
+  @keyframes seal-stamp {
+    0%   { transform: scale(2.5) rotate(-15deg); opacity: 0; }
+    60%  { transform: scale(0.95) rotate(0deg); opacity: 1; }
+    80%  { transform: scale(1.02) rotate(0deg); opacity: 1; }
+    100% { transform: scale(1) rotate(0deg); opacity: 1; }
+  }
+
+  @keyframes page-enter {
+    from {
+      opacity: 0;
+      transform: scale(0.96);
+      filter: blur(3px);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+      filter: blur(0);
+    }
+  }
+
+  .animate-atlas-zoom-in  { animation: atlas-zoom-in 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+  .animate-atlas-zoom-out { animation: atlas-zoom-out 0.5s ease-in forwards; }
+  .animate-layer-emerge   { animation: layer-emerge 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+  .animate-atlas-breathe  { animation: atlas-breathe 6s ease-in-out infinite; }
+  .animate-pulse-vital    { animation: pulse-vital 2.5s ease-in-out infinite; }
+  .animate-glow-breathe   { animation: glow-breathe var(--vitality-pulse-speed, 3s) ease-in-out infinite; }
+  .animate-drift-slow     { animation: drift-slow 20s ease-in-out infinite; }
+  .animate-fade-up        { animation: fade-up 0.9s ease forwards; }
+  .animate-fade-up-slow   { animation: fade-up-slow 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+  .animate-seal-stamp     { animation: seal-stamp 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
+  .animate-page-enter     { animation: page-enter 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+
+  .map-dot-pulse {
+    animation: map-pulse 2.5s ease-in-out infinite;
+  }
   .vitality-breathe {
     animation: vitality-breathe 3s ease-in-out infinite;
+  }
+
+  /* ─── Vitality-driven surface ────────────────── */
+  .vitality-surface {
+    background: linear-gradient(
+      135deg,
+      rgba(27, 42, 94, 1) 0%,
+      rgba(27, 42, 94, calc(1 - var(--vitality-warmth, 0) * 0.15)) 50%,
+      rgba(27, 42, 94, calc(1 - var(--vitality-warmth, 0) * 0.25)) 100%
+    );
+  }
+
+  /* ─── Atlas layer depth ──────────────────────── */
+  .atlas-layer {
+    transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .atlas-layer-1 { z-index: 10; }
+  .atlas-layer-2 { z-index: 20; }
+  .atlas-layer-3 { z-index: 30; }
+  .atlas-layer-4 { z-index: 40; }
+  .atlas-layer-5 { z-index: 50; }
+
+  /* ─── Scrollbar styling ──────────────────────── */
+  .atlas-scroll::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+  .atlas-scroll::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .atlas-scroll::-webkit-scrollbar-thumb {
+    background: rgba(200, 169, 107, 0.2);
+    border-radius: 2px;
+  }
+  .atlas-scroll::-webkit-scrollbar-thumb:hover {
+    background: rgba(200, 169, 107, 0.4);
+  }
+
+  /* ─── Shimmer effect for loading/ambient ─────── */
+  .shimmer {
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(200, 169, 107, 0.06) 50%,
+      transparent 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 3s ease-in-out infinite;
   }
 }

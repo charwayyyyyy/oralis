@@ -1,10 +1,8 @@
 import Navigation from '@/components/navigation'
 import Footer from '@/components/footer'
 import Hero from '@/components/landing/hero'
-import Metrics from '@/components/landing/metrics'
-import FeaturedLanguages from '@/components/landing/featured-languages'
-import ContributionsFeed from '@/components/landing/contributions-feed'
-import Mission from '@/components/landing/mission'
+import AtlasNarrative from '@/components/landing/atlas-narrative'
+import LivePulse from '@/components/landing/live-pulse'
 
 export default function Home() {
   return (
@@ -12,10 +10,8 @@ export default function Home() {
       <Navigation />
       <main>
         <Hero />
-        <Metrics />
-        <FeaturedLanguages />
-        <Mission />
-        <ContributionsFeed />
+        <AtlasNarrative />
+        <LivePulse />
       </main>
       <Footer />
     </>

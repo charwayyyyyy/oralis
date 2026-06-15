@@ -1,50 +1,116 @@
+'use client'
+
+import { useEffect, useRef, useState } from 'react'
+import Link from 'next/link'
 import {
   LANGUAGES,
   VITALITY_STATUS_LABELS,
   VITALITY_STATUS_COLORS,
-  formatNumber,
   type VitalityStatus,
 } from '@/lib/data'
-import Link from 'next/link'
+
+function useInView(ref: React.RefObject<HTMLElement | null>, threshold = 0.15) {
+  const [isInView, setIsInView] = useState(false)
+  useEffect(() => {
+    if (!ref.current) return
+    const observer = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) setIsInView(true) },
+      { threshold }
+    )
+    observer.observe(ref.current)
+    return () => observer.disconnect()
+  }, [ref, threshold])
+  return isInView
+}
+
+function NarrativeBlock({ children, delay = 0 }: { children: React.ReactNode; delay?: number }) {
+  const ref = useRef<HTMLDivElement>(null)
+  const inView = useInView(ref)
+  return (
+    <div
+      ref={ref}
+      style={{
+        opacity: inView ? 1 : 0,
+        transform: inView ? 'translateY(0)' : 'translateY(28px)',
+        transition: `opacity 0.8s ease ${delay}ms, transform 0.8s cubic-bezier(0.16, 1, 0.3, 1) ${delay}ms`,
+      }}
+    >
+      {children}
+    </div>
+  )
+}
 
 const statusCounts = LANGUAGES.reduce<Record<string, number>>((acc, l) => {
   acc[l.status] = (acc[l.status] ?? 0) + 1
   return acc
 }, {})
 
-const CONTINENT_DATA = [
-  { name: 'Americas',  languages: 847,  critical: 234, safe: 120 },
-  { name: 'Africa',    languages: 712,  critical: 89,  safe: 380 },
-  { name: 'Asia',      languages: 934,  critical: 312, safe: 210 },
-  { name: 'Europe',    languages: 198,  critical: 54,  safe: 94  },
-  { name: 'Oceania',   languages: 156,  critical: 78,  safe: 18  },
+const CONTINENT_NARRATIVES = [
+  {
+    name: 'Americas',
+    languages: 847,
+    critical: 234,
+    narrative: 'From the Mapudungun poetry of Chile to the last Yuchi speakers in Oklahoma, the Americas hold extraordinary linguistic diversity — much of it at the precipice of silence.',
+  },
+  {
+    name: 'Africa',
+    languages: 712,
+    critical: 89,
+    narrative: 'Africa\'s linguistic heritage is humanity\'s deepest. While many languages thrive, 89 face critical threat from urbanization and educational policy.',
+  },
+  {
+    name: 'Asia',
+    languages: 934,
+    critical: 312,
+    narrative: 'Asia holds the largest number of endangered languages. From Ainu in Hokkaido to the hill languages of Southeast Asia, 312 require urgent documentation.',
+  },
+  {
+    name: 'Europe',
+    languages: 198,
+    critical: 54,
+    narrative: 'Europe\'s linguistic margins hold treasures — Livonian on Latvia\'s coast, Cornish in Cornwall\'s cliffs, and dozens of others clinging to survival.',
+  },
+  {
+    name: 'Oceania',
+    languages: 156,
+    critical: 78,
+    narrative: 'The Pacific holds the world\'s highest density of languages per capita. Half of Oceania\'s 156 documented languages face critical threat.',
+  },
 ]
 
-const MONTHLY_ACTIVITY = [
-  { month: 'Jan', contributions: 8400,  verified: 6200  },
-  { month: 'Feb', contributions: 9200,  verified: 7100  },
-  { month: 'Mar', contributions: 11800, verified: 8900  },
-  { month: 'Apr', contributions: 10200, verified: 8100  },
-  { month: 'May', contributions: 14300, verified: 11200 },
-  { month: 'Jun', contributions: 16700, verified: 13400 },
-]
-
-const maxActivity = Math.max(...MONTHLY_ACTIVITY.map((m) => m.contributions))
+const HEARTBEAT_DATA = [32, 45, 38, 62, 55, 78, 72, 88, 65, 90, 75, 95]
 
 export default function InsightsDashboard() {
   return (
     <div className="max-w-7xl mx-auto px-6 lg:px-16 py-20 lg:py-28">
 
-      {/* Vitality distribution + key numbers */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-px bg-border mb-px">
-
-        {/* Status distribution */}
-        <div className="lg:col-span-5 bg-surface p-8 lg:p-10">
-          <div className="flex items-center gap-3 mb-8">
-            <div className="w-5 h-px bg-gold" aria-hidden="true" />
-            <h2 className="font-ui text-[11px] text-stone tracking-[0.18em] uppercase">Vitality Distribution</h2>
+      {/* ─── Vitality Narrative ─────────────────────── */}
+      <NarrativeBlock>
+        <div className="max-w-3xl mb-20">
+          <div className="flex items-center gap-4 mb-8">
+            <div className="w-8 h-px bg-gold/40" />
+            <h2 className="font-ui text-[11px] text-stone tracking-[0.18em] uppercase">Global Vitality</h2>
           </div>
-          <div className="space-y-5">
+          <p className="font-display text-3xl lg:text-4xl font-bold text-navy leading-snug mb-6 text-balance">
+            Of the world&apos;s ~7,000 living languages, 3,500 face extinction before the end of this century.
+            One falls silent every 40 days.
+          </p>
+          <p className="font-body text-stone/60 leading-relaxed text-base lg:text-lg">
+            The Oralis atlas documents the vitality of 2,847 languages — tracking speaker populations,
+            intergenerational transmission, community engagement, and preservation momentum.
+            Every data point here represents a living culture.
+          </p>
+        </div>
+      </NarrativeBlock>
+
+      {/* ─── Vitality Distribution ──────────────────── */}
+      <NarrativeBlock delay={100}>
+        <div className="glass-heavy rounded-xl p-8 lg:p-10 mb-12">
+          <div className="flex items-center gap-3 mb-8">
+            <div className="w-6 h-px bg-gold/40" />
+            <h3 className="font-ui text-[11px] text-stone tracking-[0.18em] uppercase">Vitality Spectrum</h3>
+          </div>
+          <div className="space-y-6">
             {(Object.entries(VITALITY_STATUS_LABELS) as [VitalityStatus, string][]).map(([status, label]) => {
               const count = statusCounts[status] ?? 0
               const total = LANGUAGES.length
@@ -54,145 +120,121 @@ export default function InsightsDashboard() {
               return (
                 <div key={status}>
                   <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2.5">
-                      <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: color }} aria-hidden="true" />
-                      <span className="font-ui text-sm text-navy">{label}</span>
+                    <div className="flex items-center gap-3">
+                      <span className="w-2.5 h-2.5 rounded-full shrink-0 animate-glow-breathe"
+                        style={{ backgroundColor: color, '--vitality-glow-intensity': '0.15' } as React.CSSProperties} />
+                      <span className="font-ui text-sm text-navy font-medium">{label}</span>
                     </div>
                     <div className="flex items-center gap-4">
-                      <span className="font-mono text-xs text-stone">~{globalEstimate.toLocaleString()}</span>
-                      <span className="font-mono text-xs text-stone/50 w-8 text-right">{pct}%</span>
+                      <span className="font-body text-xs text-stone/60 italic">~{globalEstimate.toLocaleString()} languages</span>
+                      <span className="font-mono text-xs text-stone/30 w-8 text-right">{pct}%</span>
                     </div>
                   </div>
-                  <div className="h-px bg-border relative overflow-hidden">
-                    <div className="absolute inset-y-0 left-0 h-full" style={{ width: `${pct}%`, backgroundColor: color }} />
+                  <div className="h-2 bg-border/20 rounded-full overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-all duration-1000"
+                      style={{ width: `${pct}%`, background: `linear-gradient(90deg, ${color}80, ${color})` }}
+                    />
                   </div>
                 </div>
               )
             })}
           </div>
-          <p className="mt-8 font-ui text-[10px] text-stone/40 leading-relaxed">
+          <p className="mt-8 font-ui text-[10px] text-stone/30 leading-relaxed">
             Global figures extrapolated from Oralis sample (n={LANGUAGES.length}) across ~7,000 documented languages.
           </p>
         </div>
+      </NarrativeBlock>
 
-        {/* Key metrics grid */}
-        <div className="lg:col-span-7 grid grid-cols-2 gap-px bg-border">
-          {[
-            { label: 'Languages at Critical Risk',   value: '3,500+',                                       note: 'Estimated globally',         highlight: true  },
-            { label: 'New Contributions / Day',       value: '~12,400',                                      note: 'Average last 30 days',       highlight: false },
-            { label: 'Verified Submissions',          value: formatNumber(Math.round(186200 * 0.78)),        note: '78% verification rate',      highlight: false },
-            { label: 'Languages with Audio',          value: '1,943',                                        note: '68% of archive',             highlight: false },
-            { label: 'Active Archive Regions',        value: '12',                                           note: 'Global AWS distribution',    highlight: false },
-            { label: 'Speaker Recordings',            value: '24,800+',                                      note: 'Native voices preserved',    highlight: true  },
-          ].map(({ label, value, note, highlight }) => (
-            <div
-              key={label}
-              className={`p-7 lg:p-8 ${highlight ? 'bg-navy' : 'bg-surface'}`}
-            >
-              <p className={`font-display text-3xl lg:text-4xl font-bold mb-2 leading-none ${highlight ? 'text-gold' : 'text-navy'}`}>
-                {value}
-              </p>
-              <p className={`font-ui text-xs font-medium mb-1 ${highlight ? 'text-ivory/70' : 'text-navy'}`}>{label}</p>
-              <p className={`font-ui text-[10px] ${highlight ? 'text-ivory/30' : 'text-stone/50'}`}>{note}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Activity chart */}
-      <div className="bg-surface border border-border p-8 lg:p-10 mt-px mb-px">
-        <div className="flex items-center justify-between mb-10">
-          <div className="flex items-center gap-3">
-            <div className="w-5 h-px bg-gold" aria-hidden="true" />
-            <h2 className="font-ui text-[11px] text-stone tracking-[0.18em] uppercase">Contribution Activity — 2025</h2>
+      {/* ─── Heartbeat of Preservation ─────────────── */}
+      <NarrativeBlock delay={150}>
+        <div className="mb-12">
+          <div className="flex items-center gap-4 mb-8">
+            <div className="w-8 h-px bg-gold/40" />
+            <h3 className="font-ui text-[11px] text-stone tracking-[0.18em] uppercase">The Heartbeat of Preservation</h3>
           </div>
-          <div className="hidden sm:flex items-center gap-5 font-ui text-[11px] text-stone">
-            <span className="flex items-center gap-2">
-              <span className="w-3 h-0.5 bg-gold inline-block" />
-              Total
-            </span>
-            <span className="flex items-center gap-2">
-              <span className="w-3 h-0.5 bg-navy inline-block" />
-              Verified
-            </span>
-          </div>
-        </div>
-        <div className="flex items-end gap-4 h-44">
-          {MONTHLY_ACTIVITY.map((month) => (
-            <div key={month.month} className="flex-1 flex flex-col items-center gap-2">
-              <div className="w-full flex items-end gap-0.5 h-36">
-                <div
-                  className="flex-1 bg-gold/25 hover:bg-gold/40 transition-colors"
-                  style={{ height: `${(month.contributions / maxActivity) * 100}%` }}
-                  title={`${month.contributions.toLocaleString()} contributions`}
-                />
-                <div
-                  className="flex-1 bg-navy/40 hover:bg-navy/60 transition-colors"
-                  style={{ height: `${(month.verified / maxActivity) * 100}%` }}
-                  title={`${month.verified.toLocaleString()} verified`}
-                />
-              </div>
-              <span className="font-ui text-[10px] text-stone/50">{month.month}</span>
-            </div>
-          ))}
-        </div>
-      </div>
+          <p className="font-body text-stone/60 leading-relaxed mb-8 max-w-2xl">
+            Preservation momentum across the atlas. Each pulse represents thousands of contributions
+            flowing in from communities worldwide — a living signal that cultural guardians are at work.
+          </p>
 
-      {/* Regional + most active */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-px bg-border mt-px mb-12">
-
-        {/* Regional */}
-        <div className="lg:col-span-6 bg-surface p-8 lg:p-10">
-          <div className="flex items-center gap-3 mb-8">
-            <div className="w-5 h-px bg-gold" aria-hidden="true" />
-            <h2 className="font-ui text-[11px] text-stone tracking-[0.18em] uppercase">By Continent</h2>
-          </div>
-          <div className="space-y-6">
-            {CONTINENT_DATA.map((c) => {
-              const critPct = Math.round((c.critical / c.languages) * 100)
-              return (
-                <div key={c.name}>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="font-ui text-sm font-medium text-navy">{c.name}</span>
-                    <div className="flex items-center gap-4 font-ui text-xs text-stone">
-                      <span>{c.languages.toLocaleString()} languages</span>
-                      <span className="font-medium" style={{ color: VITALITY_STATUS_COLORS['critically-endangered'] }}>
-                        {critPct}% at risk
-                      </span>
-                    </div>
-                  </div>
-                  <div className="h-1.5 bg-border overflow-hidden flex">
-                    <div className="h-full" style={{ width: `${(c.critical / c.languages) * 100}%`, backgroundColor: VITALITY_STATUS_COLORS['critically-endangered'] }} />
-                    <div className="h-full" style={{ width: `${((c.languages - c.critical - c.safe) / c.languages) * 100}%`, backgroundColor: VITALITY_STATUS_COLORS['endangered'] }} />
-                    <div className="h-full" style={{ width: `${(c.safe / c.languages) * 100}%`, backgroundColor: VITALITY_STATUS_COLORS['safe'] }} />
-                  </div>
+          {/* Heartbeat visualization */}
+          <div className="glass-heavy rounded-xl p-8 relative overflow-hidden">
+            <div className="flex items-end gap-3 h-28" aria-hidden="true">
+              {HEARTBEAT_DATA.map((val, i) => (
+                <div key={i} className="flex-1 flex flex-col items-center gap-1">
+                  <div
+                    className="w-full rounded-t-lg transition-all duration-700"
+                    style={{
+                      height: `${val}%`,
+                      background: `linear-gradient(to top, rgba(200,169,107,0.15), rgba(200,169,107,${0.2 + val / 200}))`,
+                      boxShadow: `0 0 ${val / 5}px rgba(200,169,107,0.1)`,
+                    }}
+                  />
                 </div>
-              )
-            })}
-          </div>
-          <div className="flex flex-wrap gap-4 mt-6 font-ui text-[10px] text-stone/50">
-            <span className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full" style={{ backgroundColor: VITALITY_STATUS_COLORS['critically-endangered'] }} />
-              Critical
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full" style={{ backgroundColor: VITALITY_STATUS_COLORS['endangered'] }} />
-              Endangered
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full" style={{ backgroundColor: VITALITY_STATUS_COLORS['safe'] }} />
-              Safe
-            </span>
+              ))}
+            </div>
+            <div className="flex justify-between mt-3">
+              {['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'].map((m) => (
+                <span key={m} className="font-ui text-[9px] text-stone/25 flex-1 text-center">{m}</span>
+              ))}
+            </div>
+
+            {/* Ambient shimmer */}
+            <div className="absolute inset-0 shimmer pointer-events-none rounded-xl" aria-hidden="true" />
           </div>
         </div>
+      </NarrativeBlock>
 
-        {/* Most active */}
-        <div className="lg:col-span-6 bg-surface p-8 lg:p-10">
-          <div className="flex items-center gap-3 mb-8">
-            <div className="w-5 h-px bg-gold" aria-hidden="true" />
-            <h2 className="font-ui text-[11px] text-stone tracking-[0.18em] uppercase">Most Active in Archive</h2>
+      {/* ─── Continental Observatory ───────────────── */}
+      <div className="mb-12">
+        <NarrativeBlock>
+          <div className="flex items-center gap-4 mb-10">
+            <div className="w-8 h-px bg-gold/40" />
+            <h3 className="font-ui text-[11px] text-stone tracking-[0.18em] uppercase">Continental Observatory</h3>
           </div>
-          <div className="divide-y divide-border">
+        </NarrativeBlock>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {CONTINENT_NARRATIVES.map((c, i) => {
+            const critPct = Math.round((c.critical / c.languages) * 100)
+            return (
+              <NarrativeBlock key={c.name} delay={i * 80}>
+                <div className="glass-heavy rounded-xl p-7 lg:p-8 hover:shadow-lg transition-all duration-500 h-full">
+                  <div className="flex items-start justify-between gap-3 mb-4">
+                    <h4 className="font-display text-xl font-bold text-navy">{c.name}</h4>
+                    <span className="font-mono text-xs text-stone/30 shrink-0">{c.languages} languages</span>
+                  </div>
+                  <p className="font-body text-sm text-stone/60 leading-relaxed mb-6">
+                    {c.narrative}
+                  </p>
+                  <div className="h-2 bg-border/20 rounded-full overflow-hidden mb-2">
+                    <div
+                      className="h-full rounded-full"
+                      style={{
+                        width: `${critPct}%`,
+                        background: `linear-gradient(90deg, ${VITALITY_STATUS_COLORS['critically-endangered']}80, ${VITALITY_STATUS_COLORS['critically-endangered']})`,
+                      }}
+                    />
+                  </div>
+                  <span className="font-ui text-[10px]" style={{ color: VITALITY_STATUS_COLORS['critically-endangered'] }}>
+                    {critPct}% at critical risk
+                  </span>
+                </div>
+              </NarrativeBlock>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* ─── Most Active in Atlas ──────────────────── */}
+      <NarrativeBlock delay={100}>
+        <div className="mb-12">
+          <div className="flex items-center gap-4 mb-8">
+            <div className="w-8 h-px bg-gold/40" />
+            <h3 className="font-ui text-[11px] text-stone tracking-[0.18em] uppercase">Most Active in the Atlas</h3>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {LANGUAGES
               .slice()
               .sort((a, b) => b.audioCount - a.audioCount)
@@ -200,63 +242,48 @@ export default function InsightsDashboard() {
                 const color = VITALITY_STATUS_COLORS[lang.status]
                 const maxCount = Math.max(...LANGUAGES.map(l => l.audioCount))
                 return (
-                  <div key={lang.id} className="py-3.5 flex items-center gap-4">
-                    <span className="font-mono text-xs text-stone/30 w-5 text-right shrink-0">{i + 1}</span>
+                  <Link
+                    key={lang.id}
+                    href={`/language/${lang.id}`}
+                    className="glass-heavy rounded-xl p-5 flex items-center gap-5 group hover:shadow-lg transition-all"
+                  >
+                    <span className="font-mono text-lg text-stone/20 w-6 text-right shrink-0">{i + 1}</span>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between mb-1.5">
-                        <Link
-                          href={`/language/${lang.id}`}
-                          className="font-display text-sm font-bold text-navy hover:text-gold transition-colors"
-                        >
-                          {lang.name}
-                        </Link>
-                        <span className="font-ui text-xs text-stone/50">{lang.audioCount.toLocaleString()}</span>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="font-display text-sm font-bold text-navy group-hover:text-gold transition-colors">{lang.name}</span>
+                        <span className="font-ui text-xs text-stone/40">{lang.audioCount.toLocaleString()} recordings</span>
                       </div>
-                      <div className="h-px bg-border relative overflow-hidden">
+                      <div className="h-1.5 bg-border/20 rounded-full overflow-hidden">
                         <div
-                          className="absolute inset-y-0 left-0"
-                          style={{ width: `${(lang.audioCount / maxCount) * 100}%`, backgroundColor: color }}
+                          className="h-full rounded-full"
+                          style={{ width: `${(lang.audioCount / maxCount) * 100}%`, background: `linear-gradient(90deg, ${color}60, ${color})` }}
                         />
                       </div>
                     </div>
-                  </div>
+                  </Link>
                 )
               })}
           </div>
         </div>
-      </div>
+      </NarrativeBlock>
 
-      {/* Infrastructure note */}
-      <div className="bg-navy text-ivory p-10 lg:p-12">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-          <div className="lg:col-span-7">
-            <div className="flex items-center gap-3 mb-5">
-              <div className="w-5 h-px bg-gold/50" aria-hidden="true" />
-              <span className="font-ui text-[11px] text-ivory/25 tracking-[0.18em] uppercase">Infrastructure</span>
-            </div>
-            <h3 className="font-display text-2xl lg:text-3xl font-bold mb-4 text-balance">
-              Built for global scale — permanent by design.
-            </h3>
-            <p className="font-body text-ivory/50 leading-relaxed">
-              The Oralis archive is powered by AWS DynamoDB, distributed across 12 global regions
-              with sub-10ms read latency. Every contribution is replicated three times for permanence.
-              The system is designed to support 100M+ contributions from communities worldwide.
-            </p>
-          </div>
-          <div className="lg:col-span-5 grid grid-cols-3 gap-4">
-            {[
-              { label: 'DynamoDB Tables', value: '47'    },
-              { label: 'Global Regions',  value: '12'    },
-              { label: 'Read Latency',    value: '<10ms' },
-            ].map(({ label, value }) => (
-              <div key={label} className="border border-ivory/10 p-5 text-center">
-                <p className="font-mono text-2xl font-bold text-gold mb-1">{value}</p>
-                <p className="font-ui text-[10px] text-ivory/35">{label}</p>
-              </div>
-            ))}
+      {/* ─── Infrastructure whisper ─────────────────── */}
+      <NarrativeBlock delay={200}>
+        <div className="glass-navy rounded-xl p-8 lg:p-10 text-ivory">
+          <p className="font-body text-ivory/30 text-sm leading-relaxed max-w-2xl">
+            The Oralis atlas is powered by a distributed infrastructure spanning 12 global regions
+            with sub-10ms read latency. Every contribution is replicated three times for permanence.
+            Built to support 100M+ cultural memories from communities worldwide.
+          </p>
+          <div className="flex items-center gap-4 mt-4">
+            <span className="font-mono text-[10px] text-gold/30">AWS</span>
+            <span className="font-ui text-[10px] text-ivory/8">&middot;</span>
+            <span className="font-mono text-[10px] text-gold/30">Vercel</span>
+            <span className="font-ui text-[10px] text-ivory/8">&middot;</span>
+            <span className="font-mono text-[10px] text-gold/30">12 Regions</span>
           </div>
         </div>
-      </div>
+      </NarrativeBlock>
     </div>
   )
 }
