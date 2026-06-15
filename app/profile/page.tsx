@@ -1,12 +1,9 @@
-import Navigation from '@/components/navigation'
-import Footer from '@/components/footer'
 import UserProfile from '@/components/profile/user-profile'
 
 export default function ProfilePage() {
   return (
     <>
-      <Navigation />
-      <main className="min-h-screen bg-background pt-[72px]">
+<main className="min-h-screen bg-background pt-[72px]">
         <div className="bg-navy-abyss text-ivory relative overflow-hidden">
           <div
             className="absolute inset-0 pointer-events-none"
@@ -35,7 +32,6 @@ export default function ProfilePage() {
         </div>
         <UserProfile />
       </main>
-      <Footer />
-    </>
+</>
   )
 }

@@ -8,8 +8,6 @@
  * The interactive filter/map UI lives in ExploreClient (client component).
  */
 
-import Navigation from '@/components/navigation'
-import Footer     from '@/components/footer'
 import ExploreClient from '@/components/explore/explore-client'
 import { getAllLanguages } from '@/lib/services/languages'
 import { LANGUAGES }      from '@/lib/data'
@@ -31,11 +29,9 @@ export default async function ExplorePage() {
 
   return (
     <>
-      <Navigation />
-      <main className="min-h-screen bg-background pt-[72px]">
+<main className="min-h-screen bg-background pt-[72px]">
         <ExploreClient languages={languages} />
       </main>
-      <Footer />
-    </>
+</>
   )
 }

@@ -5,7 +5,7 @@
  * Import ONLY in server-side code (API routes, Server Components).
  */
 
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3'
+import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 
 const ALLOWED_CONTENT_TYPES = new Set([
@@ -98,4 +98,17 @@ export async function getPresignedUploadUrl(params: {
   const uploadUrl = await getSignedUrl(getS3(), command, { expiresIn: 300 })
 
   return { uploadUrl, s3Key, bucket: S3_BUCKET }
+}
+/**
+ * Generate a pre-signed GET URL for securely playing audio.
+ * URL is valid for 1 hour (3600 seconds).
+ */
+export async function getPresignedDownloadUrl(s3Key: string): Promise<string> {
+  const command = new GetObjectCommand({
+    Bucket: S3_BUCKET,
+    Key: s3Key,
+  })
+
+  // getSignedUrl uses the configured S3Client inside
+  return await getSignedUrl(getS3(), command, { expiresIn: 3600 })
 }

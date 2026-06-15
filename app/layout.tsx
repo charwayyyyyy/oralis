@@ -51,6 +51,9 @@ export const viewport: Viewport = {
   initialScale: 1,
 }
 
+import Navigation from '@/components/navigation'
+import Footer from '@/components/footer'
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -61,10 +64,14 @@ export default function RootLayout({
       lang="en"
       className={`${playfair.variable} ${lora.variable} ${inter.variable} ${ibmPlexMono.variable} bg-navy-abyss`}
     >
-      <body className="antialiased font-body">
-        <PageTransition>
-          {children}
-        </PageTransition>
+      <body className="antialiased font-body flex flex-col min-h-screen">
+        <Navigation />
+        <main className="flex-grow">
+          <PageTransition>
+            {children}
+          </PageTransition>
+        </main>
+        <Footer />
       </body>
     </html>
   )

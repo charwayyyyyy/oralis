@@ -9,13 +9,14 @@ import { LANGUAGES } from '@/lib/data'
 const navLinks = [
   { href: '/explore',    label: 'Discover',    depth: 'Regional Discovery' },
   { href: '/contribute', label: 'Preserve',    depth: 'Contribution Ritual' },
-  { href: '/insights',   label: 'Observatory', depth: 'Global Observatory' },
+  { href: '/observatory',   label: 'Observatory', depth: 'Global Observatory' },
+  { href: '/insights',   label: 'Insights', depth: 'Global Insights' },
 ]
 
 function getAtlasDepth(pathname: string) {
   if (pathname === '/') return { level: 'World View' }
   if (pathname === '/explore') return { level: 'Regional Discovery' }
-  if (pathname === '/insights') return { level: 'Global Observatory' }
+  if (pathname === '/observatory') return { level: 'Global Observatory' }
   if (pathname === '/contribute') return { level: 'Preservation Ritual' }
   if (pathname.startsWith('/language/')) {
     const id = pathname.split('/')[2]

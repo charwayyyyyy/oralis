@@ -1,12 +1,9 @@
-import Navigation from '@/components/navigation'
-import Footer from '@/components/footer'
 import ContributionStudio from '@/components/contribute/contribution-studio'
 
 export default function ContributePage() {
   return (
     <>
-      <Navigation />
-      <main className="min-h-screen bg-background pt-[72px]">
+<main className="min-h-screen bg-background pt-[72px]">
         <div className="bg-navy-abyss text-ivory relative overflow-hidden">
           {/* Ambient glow */}
           <div
@@ -37,7 +34,6 @@ export default function ContributePage() {
         </div>
         <ContributionStudio />
       </main>
-      <Footer />
-    </>
+</>
   )
 }

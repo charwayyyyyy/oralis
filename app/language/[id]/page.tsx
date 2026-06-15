@@ -7,8 +7,6 @@
  */
 
 import { notFound }   from 'next/navigation'
-import Navigation     from '@/components/navigation'
-import Footer         from '@/components/footer'
 import LanguageDetailClient from '@/components/language/language-detail-client'
 import { getLanguageById, getAllLanguages } from '@/lib/services/languages'
 import { LANGUAGES } from '@/lib/data'
@@ -52,9 +50,7 @@ export default async function LanguageDetailPage({ params }: Props) {
 
   return (
     <>
-      <Navigation />
-      <LanguageDetailClient lang={lang} />
-      <Footer />
-    </>
+<LanguageDetailClient lang={lang} />
+</>
   )
 }

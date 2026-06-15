@@ -43,7 +43,8 @@ export default function Footer() {
                 { label: 'World View', href: '/' },
                 { label: 'Discover', href: '/explore' },
                 { label: 'Preserve', href: '/contribute' },
-                { label: 'Observatory', href: '/insights' },
+                { label: 'Observatory', href: '/observatory' },
+                { label: 'Insights', href: '/insights' },
               ].map((link) => (
                 <Link
                   key={link.href}
@@ -59,9 +60,18 @@ export default function Footer() {
 
         {/* Bottom bar */}
         <div className="py-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <p className="font-ui text-[11px] text-ivory/15">
-            &copy; {new Date().getFullYear()} Oralis. Every language carries a world.
-          </p>
+          <div className="flex items-center gap-4">
+            <p className="font-ui text-[11px] text-ivory/15">
+              &copy; {new Date().getFullYear()} Oralis. Every language carries a world.
+            </p>
+            <span className="text-ivory/10">&middot;</span>
+            <a href="https://github.com/charwayyyyyy" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 group text-ivory/20 hover:text-ivory/60 transition-colors">
+              <span className="font-ui text-[11px]">Built by charwayyyyyy</span>
+              <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" className="group-hover:text-ivory transition-colors">
+                <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path>
+              </svg>
+            </a>
+          </div>
           <div className="flex items-center gap-4">
             <span className="font-ui text-[10px] text-ivory/10 tracking-wider uppercase">Infrastructure</span>
             <span className="font-mono text-[10px] text-gold/25">AWS</span>
