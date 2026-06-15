@@ -1,5 +1,4 @@
 import Link from 'next/link'
-import Image from 'next/image'
 
 const footerLinks = {
   Platform: [
@@ -31,14 +30,21 @@ export default function Footer() {
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-12 pb-12 border-b border-ivory/10">
           {/* Brand */}
           <div className="lg:col-span-2">
-            <Link href="/" className="inline-block mb-6" aria-label="Oralis — Home">
-              <Image
-                src="/oralis-logo.png"
-                alt="Oralis"
-                width={110}
-                height={44}
-                className="h-9 w-auto object-contain brightness-0 invert opacity-80"
-              />
+            <Link href="/" className="inline-flex items-center gap-3 mb-6 group" aria-label="Oralis — Home">
+              <span className="relative grid place-items-center h-11 w-16 rounded-md overflow-hidden bg-ivory border border-gold/50 shadow-sm">
+                <span
+                  aria-hidden="true"
+                  className="absolute inset-0 bg-no-repeat"
+                  style={{
+                    backgroundImage: 'url(/oralis-logo.png)',
+                    backgroundSize: '303% 400%',
+                    backgroundPosition: '55% 22%',
+                  }}
+                />
+                <span aria-hidden="true" className="pointer-events-none absolute left-1 top-1 h-1.5 w-1.5 border-l border-t border-gold/70" />
+                <span aria-hidden="true" className="pointer-events-none absolute right-1 bottom-1 h-1.5 w-1.5 border-r border-b border-gold/70" />
+              </span>
+              <span className="font-display text-2xl font-bold tracking-tight text-ivory">Oralis</span>
             </Link>
             <p className="font-body text-ivory/45 leading-relaxed text-sm max-w-xs">
               A living archive of humanity&apos;s linguistic heritage — preserving
