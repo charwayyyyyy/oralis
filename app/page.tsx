@@ -1,16 +1,23 @@
+import Navigation from '@/components/navigation'
+import Footer from '@/components/footer'
+import Hero from '@/components/landing/hero'
+import Metrics from '@/components/landing/metrics'
+import FeaturedLanguages from '@/components/landing/featured-languages'
+import ContributionsFeed from '@/components/landing/contributions-feed'
+import Mission from '@/components/landing/mission'
+
 export default function Home() {
   return (
-    <div className="flex min-h-screen items-center justify-center font-sans">
-      <main className="flex w-full max-w-3xl flex-col items-center gap-8 px-6 py-16 text-center sm:items-start sm:text-left">
-        <div className="flex flex-col gap-4">
-          <h1 className="text-4xl font-bold tracking-tight">
-            Oralis
-          </h1>
-          <p className="max-w-md text-lg text-muted-foreground">
-            To get started, send a prompt or modify this page directly.
-          </p>
-        </div>
+    <>
+      <Navigation />
+      <main>
+        <Hero />
+        <Metrics />
+        <FeaturedLanguages />
+        <Mission />
+        <ContributionsFeed />
       </main>
-    </div>
-  );
+      <Footer />
+    </>
+  )
 }
