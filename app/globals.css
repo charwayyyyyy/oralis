@@ -1,15 +1,25 @@
 @import 'tailwindcss';
 @import 'tw-animate-css';
-@import 'shadcn/tailwind.css';
 
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  --font-sans: 'Lora', 'Georgia', serif;
-  --font-heading: 'Playfair Display', 'Georgia', serif;
-  --font-mono: 'IBM Plex Mono', monospace;
-  --font-ui: 'Inter', 'Helvetica Neue', sans-serif;
+  /* Typography */
+  --font-sans: var(--font-lora), 'Georgia', serif;
+  --font-serif: var(--font-playfair), 'Georgia', serif;
+  --font-mono: var(--font-ibm-plex-mono), 'Courier New', monospace;
+  --font-inter: var(--font-inter);
 
+  /* Brand palette — directly in @theme so Tailwind generates utilities */
+  --color-earth: #4A3428;
+  --color-clay: #8C5A3C;
+  --color-gold: #C8A96B;
+  --color-forest: #3E6B48;
+  --color-ivory: #F7F4EE;
+  --color-surface: #FDFBF7;
+  --color-charcoal: #1F1F1F;
+
+  /* Shadcn semantic tokens (resolved in :root) */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -28,11 +38,6 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
-  --color-earth: var(--earth);
-  --color-clay: var(--clay);
-  --color-gold: var(--gold);
-  --color-forest: var(--forest);
-  --color-surface: var(--surface);
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
   --color-chart-3: var(--chart-3);
@@ -51,21 +56,10 @@
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) * 1.4);
-  --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
 }
 
 :root {
   color-scheme: light;
-
-  /* Core palette */
-  --earth: #4A3428;
-  --clay: #8C5A3C;
-  --gold: #C8A96B;
-  --forest: #3E6B48;
-  --ivory: #F7F4EE;
-  --surface: #FDFBF7;
-  --charcoal: #1F1F1F;
 
   /* Semantic tokens */
   --background: #F7F4EE;
@@ -109,102 +103,40 @@
   * {
     @apply border-border outline-ring/50;
   }
-  body {
-    @apply bg-background text-foreground;
-    font-family: 'Lora', Georgia, serif;
-    font-feature-settings: 'kern' 1, 'liga' 1;
-  }
   html {
     @apply bg-background;
     scroll-behavior: smooth;
   }
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-feature-settings: 'kern' 1, 'liga' 1;
+  }
   h1, h2, h3, h4, h5, h6 {
-    font-family: 'Playfair Display', Georgia, serif;
+    font-family: var(--font-playfair), 'Georgia', serif;
     font-feature-settings: 'kern' 1, 'liga' 1;
   }
 }
 
 @layer utilities {
+  /* Typography helpers */
   .font-display {
-    font-family: 'Playfair Display', Georgia, serif;
+    font-family: var(--font-playfair), 'Georgia', serif;
   }
   .font-body {
-    font-family: 'Lora', Georgia, serif;
+    font-family: var(--font-lora), 'Georgia', serif;
   }
   .font-ui {
-    font-family: 'Inter', 'Helvetica Neue', sans-serif;
+    font-family: var(--font-inter), 'Helvetica Neue', sans-serif;
   }
-  .font-mono {
-    font-family: 'IBM Plex Mono', monospace;
-  }
-  .text-earth {
-    color: var(--earth);
-  }
-  .text-clay {
-    color: var(--clay);
-  }
-  .text-gold {
-    color: var(--gold);
-  }
-  .text-forest {
-    color: var(--forest);
-  }
-  .bg-earth {
-    background-color: var(--earth);
-  }
-  .bg-clay {
-    background-color: var(--clay);
-  }
-  .bg-gold {
-    background-color: var(--gold);
-  }
-  .bg-forest {
-    background-color: var(--forest);
-  }
-  .bg-ivory {
-    background-color: var(--ivory);
-  }
-  .bg-surface {
-    background-color: var(--surface);
-  }
-  .border-earth {
-    border-color: var(--earth);
-  }
-  .border-gold {
-    border-color: var(--gold);
-  }
-  .vitality-bar {
-    height: 3px;
-    border-radius: 2px;
-    background: var(--gold);
-  }
-  .editorial-line {
-    height: 1px;
-    background: var(--border);
-  }
-  .waveform-bar {
-    background: var(--gold);
-    border-radius: 2px;
-    animation: waveform-pulse 1.2s ease-in-out infinite;
-  }
+
+  /* Animations */
   @keyframes waveform-pulse {
     0%, 100% { opacity: 0.4; transform: scaleY(0.6); }
     50% { opacity: 1; transform: scaleY(1); }
-  }
-  .map-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: var(--gold);
-    box-shadow: 0 0 0 0 rgba(200, 169, 107, 0.4);
-    animation: map-pulse 2s infinite;
   }
   @keyframes map-pulse {
     0% { box-shadow: 0 0 0 0 rgba(200, 169, 107, 0.4); }
     70% { box-shadow: 0 0 0 10px rgba(200, 169, 107, 0); }
     100% { box-shadow: 0 0 0 0 rgba(200, 169, 107, 0); }
-  }
-  .progress-vitality {
-    background: linear-gradient(90deg, var(--forest), var(--gold));
   }
 }
