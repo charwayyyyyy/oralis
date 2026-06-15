@@ -1,8 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { LANGUAGES, VITALITY_STATUS_COLORS } from '@/lib/data'
-import RegisterLanguageModal from './register-language-modal'
+import WizardContainer from '@/components/contribution-wizard/WizardContainer'
 
 const STEPS = [
   { number: 1, label: 'Choose a Culture',    description: 'Select the language you are preserving' },
@@ -48,13 +48,22 @@ export default function ContributionStudio() {
   const [source, setSource]                     = useState('')
   const [location, setLocation]                 = useState('')
   const [consentChecked, setConsentChecked]     = useState(false)
-  const [audioUploaded, setAudioUploaded]       = useState(false)
   const [submitted, setSubmitted]               = useState(false)
+  const [submitting, setSubmitting]             = useState(false)
+  const [submitError, setSubmitError]           = useState<string | null>(null)
+
+  // Audio upload state
+  const [audioFile, setAudioFile]               = useState<File | null>(null)
+  const [audioUploading, setAudioUploading]     = useState(false)
+  const [audioS3Key, setAudioS3Key]             = useState<string | null>(null)
+  const [audioUploadError, setAudioUploadError] = useState<string | null>(null)
+  const audioInputRef                           = useRef<HTMLInputElement>(null)
 
   // Registration modal
   const [showRegister, setShowRegister]         = useState(false)
   const [registeredLang, setRegisteredLang]     = useState<NewLanguagePayload | null>(null)
   const [registerSuccess, setRegisterSuccess]   = useState(false)
+  const [registerError, setRegisterError]       = useState<string | null>(null)
 
   const lang = LANGUAGES.find((l) => l.id === selectedLanguage)
 
@@ -66,14 +75,91 @@ export default function ContributionStudio() {
     return true
   }
 
+  // ── Audio upload via pre-signed S3 URL ───────────────────────────────
+  const handleAudioFile = async (file: File) => {
+    setAudioFile(file)
+    setAudioUploadError(null)
+    setAudioUploading(true)
+    try {
+      // Step 1: Get pre-signed URL from server
+      const urlRes = await fetch('/api/upload-url', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({
+          languageId:    selectedLanguage,
+          fileName:      file.name,
+          contentType:   file.type,
+          contributorId: 'anonymous',
+        }),
+      })
+      const urlData = await urlRes.json()
+      if (!urlRes.ok) throw new Error(urlData.error ?? 'Failed to get upload URL')
+
+      // Step 2: PUT file directly to S3
+      const s3Res = await fetch(urlData.uploadUrl, {
+        method:  'PUT',
+        headers: { 'Content-Type': file.type },
+        body:    file,
+      })
+      if (!s3Res.ok) throw new Error('S3 upload failed. Please try again.')
+
+      setAudioS3Key(urlData.s3Key)
+    } catch (e) {
+      setAudioUploadError(e instanceof Error ? e.message : 'Upload failed')
+      setAudioFile(null)
+    } finally {
+      setAudioUploading(false)
+    }
+  }
+
   // ── Handler: language registered ─────────────────────────────────────
-  const handleRegistered = (payload: NewLanguagePayload) => {
-    setRegisteredLang(payload)
-    setShowRegister(false)
-    setRegisterSuccess(true)
-    // TODO: POST to /api/languages when AWS is connected
-    // await fetch('/api/languages', { method: 'POST', body: JSON.stringify(payload) })
-    console.log('[ORALIS] New language registration payload (ready for DynamoDB):', payload)
+  const handleRegistered = async (payload: NewLanguagePayload) => {
+    setRegisterError(null)
+    try {
+      const res = await fetch('/api/languages', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify(payload),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? 'Registration failed')
+      setRegisteredLang(payload)
+      setShowRegister(false)
+      setRegisterSuccess(true)
+    } catch (e) {
+      setRegisterError(e instanceof Error ? e.message : 'Registration failed. Please try again.')
+    }
+  }
+
+  // ── Handler: seal contribution ────────────────────────────────────────
+  const handleSeal = async () => {
+    if (!lang) return
+    setSubmitting(true)
+    setSubmitError(null)
+    try {
+      const res = await fetch('/api/contributions', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({
+          languageId:   lang.id,
+          languageName: lang.name,
+          type:         contentType,
+          title,
+          body,
+          context,
+          source,
+          location,
+          audioS3Key:   audioS3Key ?? undefined,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? 'Submission failed')
+      setSubmitted(true)
+    } catch (e) {
+      setSubmitError(e instanceof Error ? e.message : 'Submission failed. Please try again.')
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   // ── Success screen after contribution submitted ────────────────────────
@@ -120,11 +206,10 @@ export default function ContributionStudio() {
 
   return (
     <>
-      {/* Register modal rendered at root level */}
+      {/* Wizard container rendered at root level */}
       {showRegister && (
-        <RegisterLanguageModal
+        <WizardContainer
           onClose={() => setShowRegister(false)}
-          onSuccess={handleRegistered}
         />
       )}
 
@@ -318,7 +403,7 @@ export default function ContributionStudio() {
                 </div>
               )}
 
-              {/* ── Step 3: Audio ──────────────────────────────── */}
+              {/* ── Step 3: Audio ────────────────── */}
               {step === 3 && (
                 <div>
                   <h2 className="font-display text-3xl font-bold text-navy mb-2">Capture the sound.</h2>
@@ -327,25 +412,49 @@ export default function ContributionStudio() {
                     speaker carries meaning that text alone cannot.
                   </p>
 
+                  {/* Hidden file input */}
+                  <input
+                    ref={audioInputRef}
+                    type="file"
+                    accept="audio/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0]
+                      if (file) handleAudioFile(file)
+                    }}
+                  />
+
                   <div
                     className={`rounded-xl p-12 text-center transition-all cursor-pointer ${
-                      audioUploaded ? 'glass-gold shadow-md' : 'glass hover:shadow-sm border-2 border-dashed border-border/30'
+                      audioS3Key ? 'glass-gold shadow-md' : audioUploading ? 'glass border-2 border-gold/20 border-dashed' : 'glass hover:shadow-sm border-2 border-dashed border-border/30'
                     }`}
-                    onClick={() => setAudioUploaded(!audioUploaded)}
+                    onClick={() => !audioUploading && audioInputRef.current?.click()}
+                    onDrop={(e) => { e.preventDefault(); const file = e.dataTransfer.files?.[0]; if (file) handleAudioFile(file) }}
+                    onDragOver={(e) => e.preventDefault()}
                     role="button"
                     tabIndex={0}
-                    onKeyDown={(e) => e.key === 'Enter' && setAudioUploaded(!audioUploaded)}
+                    onKeyDown={(e) => e.key === 'Enter' && audioInputRef.current?.click()}
                     aria-label="Upload audio file"
                   >
-                    {audioUploaded ? (
+                    {audioUploading ? (
+                      <div>
+                        <div className="w-14 h-14 glass rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
+                          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                            <path d="M10 4v12M4 10l6-6 6 6" stroke="#C8A96B" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>
+                        </div>
+                        <p className="font-display text-base font-bold text-navy mb-1">Uploading to S3…</p>
+                        <p className="font-ui text-sm text-stone">{audioFile?.name}</p>
+                      </div>
+                    ) : audioS3Key ? (
                       <div>
                         <div className="w-14 h-14 glass-gold rounded-full flex items-center justify-center mx-auto mb-4">
                           <svg width="22" height="22" viewBox="0 0 20 20" fill="none" aria-hidden="true">
                             <path d="M4 10l4 4 8-8" stroke="#C8A96B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                           </svg>
                         </div>
-                        <p className="font-display text-base font-bold text-gold mb-1">audio_recording.wav</p>
-                        <p className="font-ui text-xs text-stone">3:24 · 44.1kHz · Stereo</p>
+                        <p className="font-display text-base font-bold text-gold mb-1">{audioFile?.name}</p>
+                        <p className="font-ui text-xs text-stone">Uploaded to S3 ✓</p>
                       </div>
                     ) : (
                       <div>
@@ -361,12 +470,10 @@ export default function ContributionStudio() {
                     )}
                   </div>
 
-                  <div className="mt-4 flex items-center gap-2">
-                    <span className="font-ui text-xs text-stone">{"Don't have a file?"}</span>
-                    <button className="font-ui text-xs text-gold hover:text-navy transition-colors">
-                      Record in browser →
-                    </button>
-                  </div>
+                  {audioUploadError && (
+                    <p className="mt-3 font-ui text-xs text-red-500">⚠ {audioUploadError}</p>
+                  )}
+
                   <p className="mt-4 font-ui text-xs text-stone/40">
                     Skip this step if contributing vocabulary or cultural context without audio.
                   </p>
@@ -449,7 +556,7 @@ export default function ContributionStudio() {
                       { label: 'Culture',          value: lang?.name ?? '—' },
                       { label: 'Memory Type',      value: contentType || '—' },
                       { label: 'Title',            value: title || '—' },
-                      { label: 'Audio',            value: audioUploaded ? 'Captured' : 'Not included' },
+                      { label: 'Audio',            value: audioS3Key ? `Uploaded ✓` : 'Not included' },
                       { label: 'Cultural Context', value: context ? `${context.slice(0, 80)}…` : '—' },
                       { label: 'Location',         value: location || '—' },
                     ].map(({ label, value }) => (
@@ -477,6 +584,11 @@ export default function ContributionStudio() {
                 >
                   ← Back
                 </button>
+
+                {submitError && (
+                  <p className="font-ui text-xs text-red-500 max-w-xs text-center">⚠ {submitError}</p>
+                )}
+
                 {step < 5 ? (
                   <button
                     onClick={() => setStep((s) => s + 1)}
@@ -487,10 +599,18 @@ export default function ContributionStudio() {
                   </button>
                 ) : (
                   <button
-                    onClick={() => setSubmitted(true)}
-                    className="font-ui text-sm px-8 py-3 bg-gold/90 backdrop-blur-sm text-ink font-medium rounded-lg hover:bg-gold transition-all shadow-lg shadow-gold/10"
+                    onClick={handleSeal}
+                    disabled={submitting}
+                    className="font-ui text-sm px-8 py-3 bg-gold/90 backdrop-blur-sm text-ink font-medium rounded-lg hover:bg-gold transition-all shadow-lg shadow-gold/10 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                   >
-                    Seal the Record
+                    {submitting ? (
+                      <>
+                        <svg className="animate-spin" width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                          <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeDasharray="30 70" />
+                        </svg>
+                        Sealing…
+                      </>
+                    ) : 'Seal the Record'}
                   </button>
                 )}
               </div>

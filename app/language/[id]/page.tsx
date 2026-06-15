@@ -1,10 +1,30 @@
-import { notFound } from 'next/navigation'
-import Navigation from '@/components/navigation'
-import Footer from '@/components/footer'
-import { LANGUAGES } from '@/lib/data'
-import LanguageDetailClient from '@/components/language/language-detail-client'
+/**
+ * app/language/[id]/page.tsx
+ *
+ * Server Component — fetches language data from DynamoDB.
+ * generateStaticParams fetches all IDs at build time for SSG.
+ * Falls back to static data if DynamoDB is unavailable.
+ */
 
-export function generateStaticParams() {
+import { notFound }   from 'next/navigation'
+import Navigation     from '@/components/navigation'
+import Footer         from '@/components/footer'
+import LanguageDetailClient from '@/components/language/language-detail-client'
+import { getLanguageById, getAllLanguages } from '@/lib/services/languages'
+import { LANGUAGES } from '@/lib/data'
+
+export const revalidate = 3600
+
+// Generate static paths from DynamoDB at build time (falls back to local data)
+export async function generateStaticParams() {
+  try {
+    const languages = await getAllLanguages()
+    if (languages.length > 0) {
+      return languages.map((l) => ({ id: l.id }))
+    }
+  } catch {
+    // DynamoDB not yet configured — use static fallback
+  }
   return LANGUAGES.map((l) => ({ id: l.id }))
 }
 
@@ -14,7 +34,20 @@ interface Props {
 
 export default async function LanguageDetailPage({ params }: Props) {
   const { id } = await params
-  const lang = LANGUAGES.find((l) => l.id === id)
+
+  // Try DynamoDB first, fall back to static data
+  let lang = null
+  try {
+    lang = await getLanguageById(id)
+  } catch {
+    lang = LANGUAGES.find((l) => l.id === id) ?? null
+  }
+
+  // If still not found, try static fallback before 404
+  if (!lang) {
+    lang = LANGUAGES.find((l) => l.id === id) ?? null
+  }
+
   if (!lang) notFound()
 
   return (
