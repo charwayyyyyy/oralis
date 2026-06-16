@@ -1,12 +1,13 @@
 /**
  * lib/aws/s3.ts
  *
- * S3Client singleton + pre-signed URL helper.
+ * S3Client singleton + pre-signed URL helpers.
  * Import ONLY in server-side code (API routes, Server Components).
  */
 
-import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3'
+import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
+import { createPresignedPost } from '@aws-sdk/s3-presigned-post'
 
 const ALLOWED_CONTENT_TYPES = new Set([
   'audio/mpeg',
@@ -20,6 +21,8 @@ const ALLOWED_CONTENT_TYPES = new Set([
   'audio/ogg',
   'audio/webm',
 ])
+
+const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10 MB — enforced by S3 policy
 
 function createS3Client(): S3Client {
   const region = process.env.AWS_REGION ?? 'us-east-1'
@@ -46,59 +49,66 @@ export function getS3(): S3Client {
 
 export const S3_BUCKET = process.env.S3_BUCKET ?? 'oralis-media-prod-001'
 
-export interface PresignedUploadResult {
-  uploadUrl: string
-  s3Key: string
+export interface PresignedPostResult {
+  url:    string
+  fields: Record<string, string>
+  s3Key:  string
   bucket: string
 }
 
 /**
- * Generate a pre-signed PUT URL for direct browser-to-S3 upload.
+ * Generate a pre-signed POST for direct browser-to-S3 upload.
  *
- * Key format: language/<languageId>/<contributorId>/<timestamp>.<ext>
- * URL is valid for 5 minutes (300 seconds).
+ * Uses presigned POST (not PUT) so we can enforce server-side Conditions,
+ * including a hard content-length-range cap of 10 MB.
+ *
+ * Key format:  language/<languageId>/<contributorId>/<timestamp>.<ext>
+ * URL valid for 5 minutes (300 seconds).
  */
-export async function getPresignedUploadUrl(params: {
-  languageId: string
-  contributorId: string    // anonymized or hashed email
-  fileName: string
-  contentType: string
-}): Promise<PresignedUploadResult> {
+export async function getPresignedPost(params: {
+  languageId:    string
+  contributorId: string
+  fileName:      string
+  contentType:   string
+}): Promise<PresignedPostResult> {
   const { languageId, contributorId, fileName, contentType } = params
 
   // Validate content type
   if (!ALLOWED_CONTENT_TYPES.has(contentType.toLowerCase())) {
-    throw new Error(`Unsupported content type: ${contentType}. Allowed: ${[...ALLOWED_CONTENT_TYPES].join(', ')}`)
+    throw new Error(
+      `Unsupported content type: ${contentType}. Allowed: ${[...ALLOWED_CONTENT_TYPES].join(', ')}`,
+    )
   }
 
   // Extract and sanitise extension
   const rawExt = fileName.split('.').pop()?.toLowerCase() ?? 'mp3'
   const ext    = /^[a-z0-9]{1,5}$/.test(rawExt) ? rawExt : 'mp3'
 
-  // Safe language ID (alphanumeric + hyphens only)
+  // Safe IDs (alphanumeric + hyphens only)
   const safeLang  = languageId.replace(/[^a-z0-9-]/gi, '').toLowerCase()
   const safeUser  = contributorId.replace(/[^a-z0-9]/gi, '').toLowerCase().slice(0, 32)
   const timestamp = Date.now()
 
   const s3Key = `language/${safeLang}/${safeUser}/${timestamp}.${ext}`
 
-  const command = new PutObjectCommand({
-    Bucket:      S3_BUCKET,
-    Key:         s3Key,
-    ContentType: contentType,
-    // Enforce max 500 MB via content-length-range condition
-    // (enforced server-side in policy; client respects it)
-    Metadata: {
-      languageId,
-      contributorId: safeUser,
-      uploadedAt:    new Date(timestamp).toISOString(),
+  const { url, fields } = await createPresignedPost(getS3(), {
+    Bucket:     S3_BUCKET,
+    Key:        s3Key,
+    Expires:    300, // 5 minutes
+    Conditions: [
+      // Enforce 10 MB max — S3 rejects any upload exceeding this
+      ['content-length-range', 0, MAX_FILE_SIZE],
+      // Lock the content-type to the declared audio type
+      ['eq', '$Content-Type', contentType],
+    ],
+    Fields: {
+      'Content-Type': contentType,
     },
   })
 
-  const uploadUrl = await getSignedUrl(getS3(), command, { expiresIn: 300 })
-
-  return { uploadUrl, s3Key, bucket: S3_BUCKET }
+  return { url, fields, s3Key, bucket: S3_BUCKET }
 }
+
 /**
  * Generate a pre-signed GET URL for securely playing audio.
  * URL is valid for 1 hour (3600 seconds).
@@ -106,9 +116,8 @@ export async function getPresignedUploadUrl(params: {
 export async function getPresignedDownloadUrl(s3Key: string): Promise<string> {
   const command = new GetObjectCommand({
     Bucket: S3_BUCKET,
-    Key: s3Key,
+    Key:    s3Key,
   })
 
-  // getSignedUrl uses the configured S3Client inside
   return await getSignedUrl(getS3(), command, { expiresIn: 3600 })
 }

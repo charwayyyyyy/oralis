@@ -3,74 +3,59 @@
  *
  * POST /api/upload-url
  *
- * Generates a pre-signed S3 PUT URL for direct browser-to-S3 audio upload.
- * The browser uploads directly to S3 (bypasses our server) — efficient for large files.
+ * Generates a pre-signed S3 POST policy for direct browser-to-S3 audio upload.
+ * Uses createPresignedPost (not PUT) to enforce 10 MB content-length-range server-side.
  *
  * Flow:
- *   1. Browser POSTs { languageId, fileName, contentType, contributorId } here
- *   2. Server validates and returns { uploadUrl, s3Key }
- *   3. Browser PUTs the file directly to S3 using uploadUrl
- *   4. Browser POSTs to /api/contributions with s3Key to store metadata
+ *   1. Browser POSTs { languageId, fileName, contentType } here
+ *   2. Server validates via Zod and returns { url, fields, s3Key }
+ *   3. Browser builds a FormData, appends all fields + the file, and POSTs to url
+ *   4. On success, browser POSTs to /api/contribution/create with s3Key
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { getPresignedUploadUrl } from '@/lib/aws/s3'
+import { getPresignedPost } from '@/lib/aws/s3'
+import { UploadUrlSchema } from '@/lib/validations'
 
 export const runtime = 'nodejs'
 
-const ALLOWED_TYPES = new Set([
-  'audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/x-wav',
-  'audio/flac', 'audio/x-flac', 'audio/mp4', 'audio/m4a',
-  'audio/ogg', 'audio/webm',
-])
-
 export async function POST(req: NextRequest) {
-  let body: Record<string, unknown>
+  let raw: unknown
 
   try {
-    body = await req.json()
+    raw = await req.json()
   } catch {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
   }
 
-  const { languageId, fileName, contentType, contributorId } = body
-
-  if (!languageId || typeof languageId !== 'string')
-    return NextResponse.json({ error: 'languageId is required' }, { status: 400 })
-
-  if (!fileName || typeof fileName !== 'string')
-    return NextResponse.json({ error: 'fileName is required' }, { status: 400 })
-
-  if (!contentType || typeof contentType !== 'string')
-    return NextResponse.json({ error: 'contentType is required' }, { status: 400 })
-
-  if (!ALLOWED_TYPES.has((contentType as string).toLowerCase())) {
-    return NextResponse.json(
-      { error: `Unsupported file type: ${contentType}. Upload MP3, WAV, FLAC, M4A, or OGG.` },
-      { status: 400 },
-    )
+  // ── Zod validation ────────────────────────────────────────────────────────
+  const result = UploadUrlSchema.safeParse(raw)
+  if (!result.success) {
+    const messages = result.error.errors.map((e) => e.message).join(', ')
+    return NextResponse.json({ error: messages }, { status: 400 })
   }
 
-  // Use a safe default contributor ID if not provided
+  const { languageId, fileName, contentType, contributorId } = result.data
+
   const safeContributorId =
-    typeof contributorId === 'string' && contributorId.trim().length > 0
-      ? contributorId.trim()
-      : 'anonymous'
+    contributorId && contributorId.trim().length > 0 ? contributorId.trim() : 'anonymous'
 
   try {
-    const result = await getPresignedUploadUrl({
-      languageId:    (languageId as string).trim(),
+    const presigned = await getPresignedPost({
+      languageId:    languageId.trim(),
       contributorId: safeContributorId,
-      fileName:      (fileName as string).trim(),
-      contentType:   (contentType as string).trim().toLowerCase(),
+      fileName:      fileName.trim(),
+      contentType:   contentType.trim().toLowerCase(),
     })
 
     return NextResponse.json(
       {
-        uploadUrl: result.uploadUrl,
-        s3Key:     result.s3Key,
-        bucket:    result.bucket,
-        expiresIn: 300, // seconds
+        url:       presigned.url,
+        fields:    presigned.fields,
+        s3Key:     presigned.s3Key,
+        bucket:    presigned.bucket,
+        maxBytes:  10485760, // 10 MB — inform the client
+        expiresIn: 300,
       },
       { status: 200 },
     )

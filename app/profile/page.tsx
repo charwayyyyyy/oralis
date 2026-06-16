@@ -18,15 +18,15 @@ export default function ProfilePage() {
           <div className="relative max-w-7xl mx-auto px-6 lg:px-16 py-20 lg:py-28">
             <div className="flex items-center gap-4 mb-8">
               <div className="w-10 h-px bg-gold/30" />
-              <span className="font-ui text-[11px] text-ivory/25 tracking-[0.25em] uppercase">Your Atlas Identity</span>
+              <span className="font-ui text-[11px] text-ivory/25 tracking-[0.25em] uppercase">Contribution Management</span>
             </div>
             <h1 className="font-display font-bold text-ivory leading-tight text-balance mb-5"
               style={{ fontSize: 'clamp(2.4rem, 5vw, 4rem)' }}>
-              Your footprint<br />in the atlas.
+              Manage your<br />contribution.
             </h1>
             <p className="font-body text-ivory/35 text-lg max-w-2xl leading-relaxed">
-              Every contribution you make becomes part of the permanent cultural record. Here is
-              the mark you have left on humanity&apos;s linguistic heritage.
+              Use your delete token to look up and manage any contribution you have made.
+              No account required — your token is your key.
             </p>
           </div>
         </div>

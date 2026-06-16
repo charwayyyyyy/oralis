@@ -14,8 +14,6 @@ const STEPS = [
 
 type ContentType = 'vocabulary' | 'story' | 'audio' | 'cultural-context'
 
-// Flat type for the language registration payload
-// ready for DynamoDB PutItem when AWS is wired in
 export interface NewLanguagePayload {
   contributorName: string
   contributorEmail: string
@@ -38,6 +36,13 @@ export interface NewLanguagePayload {
   consent: boolean
 }
 
+interface SealResult {
+  contributionId: string
+  PK:             string
+  sk:             string
+  deleteToken:    string
+}
+
 export default function ContributionStudio() {
   const [step, setStep]                         = useState(1)
   const [selectedLanguage, setSelectedLanguage] = useState('')
@@ -47,10 +52,13 @@ export default function ContributionStudio() {
   const [context, setContext]                   = useState('')
   const [source, setSource]                     = useState('')
   const [location, setLocation]                 = useState('')
+  const [contributorName, setContributorName]   = useState('')
   const [consentChecked, setConsentChecked]     = useState(false)
   const [submitted, setSubmitted]               = useState(false)
   const [submitting, setSubmitting]             = useState(false)
   const [submitError, setSubmitError]           = useState<string | null>(null)
+  const [sealResult, setSealResult]             = useState<SealResult | null>(null)
+  const [tokenCopied, setTokenCopied]           = useState(false)
 
   // Audio upload state
   const [audioFile, setAudioFile]               = useState<File | null>(null)
@@ -71,37 +79,48 @@ export default function ContributionStudio() {
     if (step === 1) return !!selectedLanguage
     if (step === 2) return !!contentType && !!title
     if (step === 3) return true
-    if (step === 4) return !!context && consentChecked
+    if (step === 4) return !!context && !!contributorName.trim() && consentChecked
     return true
   }
 
-  // ── Audio upload via pre-signed S3 URL ───────────────────────────────
+  // ── Audio upload via presigned POST (10MB enforced by S3) ────────────────
   const handleAudioFile = async (file: File) => {
+    // Client-side size guard — S3 will also reject server-side
+    if (file.size > 10 * 1024 * 1024) {
+      setAudioUploadError('File exceeds the 10 MB limit. Please choose a smaller file.')
+      return
+    }
+
     setAudioFile(file)
     setAudioUploadError(null)
     setAudioUploading(true)
     try {
-      // Step 1: Get pre-signed URL from server
+      // Step 1: Get pre-signed POST policy from our server
       const urlRes = await fetch('/api/upload-url', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({
-          languageId:    selectedLanguage,
-          fileName:      file.name,
-          contentType:   file.type,
+          languageId:   selectedLanguage,
+          fileName:     file.name,
+          contentType:  file.type,
           contributorId: 'anonymous',
         }),
       })
       const urlData = await urlRes.json()
       if (!urlRes.ok) throw new Error(urlData.error ?? 'Failed to get upload URL')
 
-      // Step 2: PUT file directly to S3
-      const s3Res = await fetch(urlData.uploadUrl, {
-        method:  'PUT',
-        headers: { 'Content-Type': file.type },
-        body:    file,
+      // Step 2: Build FormData and POST directly to S3 (presigned POST)
+      const formData = new FormData()
+      // All policy fields must come BEFORE the file
+      Object.entries(urlData.fields as Record<string, string>).forEach(([key, val]) => {
+        formData.append(key, val)
       })
-      if (!s3Res.ok) throw new Error('S3 upload failed. Please try again.')
+      formData.append('file', file) // file MUST be last
+
+      const s3Res = await fetch(urlData.url, { method: 'POST', body: formData })
+      if (!s3Res.ok) {
+        throw new Error('S3 upload failed. The file may exceed the 10 MB limit or be an invalid type.')
+      }
 
       setAudioS3Key(urlData.s3Key)
     } catch (e) {
@@ -112,7 +131,7 @@ export default function ContributionStudio() {
     }
   }
 
-  // ── Handler: language registered ─────────────────────────────────────
+  // ── Handler: language registered ─────────────────────────────────────────
   const handleRegistered = async (payload: NewLanguagePayload) => {
     setRegisterError(null)
     try {
@@ -131,29 +150,56 @@ export default function ContributionStudio() {
     }
   }
 
-  // ── Handler: seal contribution ────────────────────────────────────────
+  // ── Handler: seal contribution ────────────────────────────────────────────
   const handleSeal = async () => {
     if (!lang) return
     setSubmitting(true)
     setSubmitError(null)
     try {
-      const res = await fetch('/api/contributions', {
+      const res = await fetch('/api/contribution/create', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({
-          languageId:   lang.id,
-          languageName: lang.name,
-          type:         contentType,
+          languageId:      lang.id,
+          languageName:    lang.name,
+          contentType,
           title,
           body,
           context,
           source,
           location,
-          audioS3Key:   audioS3Key ?? undefined,
+          audioS3Key:      audioS3Key ?? undefined,
+          contributorName: contributorName.trim(),
         }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? 'Submission failed')
+
+      setSealResult({
+        contributionId: data.contributionId,
+        PK:             data.PK,
+        sk:             data.sk,
+        deleteToken:    data.deleteToken,
+      })
+
+      // Persist token in localStorage so user can retrieve it later
+      if (data.deleteToken && data.contributionId) {
+        try {
+          const stored = JSON.parse(localStorage.getItem('oralis_tokens') ?? '{}')
+          stored[data.contributionId] = {
+            token:    data.deleteToken,
+            PK:       data.PK,
+            sk:       data.sk,
+            title,
+            language: lang.name,
+            date:     new Date().toISOString(),
+          }
+          localStorage.setItem('oralis_tokens', JSON.stringify(stored))
+        } catch {
+          // localStorage not critical
+        }
+      }
+
       setSubmitted(true)
     } catch (e) {
       setSubmitError(e instanceof Error ? e.message : 'Submission failed. Please try again.')
@@ -162,11 +208,19 @@ export default function ContributionStudio() {
     }
   }
 
-  // ── Success screen after contribution submitted ────────────────────────
-  if (submitted) {
+  const handleCopyToken = () => {
+    if (!sealResult?.deleteToken) return
+    navigator.clipboard.writeText(sealResult.deleteToken).then(() => {
+      setTokenCopied(true)
+      setTimeout(() => setTokenCopied(false), 2500)
+    })
+  }
+
+  // ── Success screen after contribution submitted ────────────────────────────
+  if (submitted && sealResult) {
     return (
       <div className="max-w-7xl mx-auto px-6 lg:px-12 py-24 text-center">
-        <div className="max-w-lg mx-auto">
+        <div className="max-w-xl mx-auto">
           <div className="w-24 h-24 glass-gold rounded-full flex items-center justify-center mx-auto mb-8 animate-seal-stamp">
             <div className="w-16 h-16 border-2 border-gold/40 rounded-full flex items-center justify-center">
               <svg width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -175,28 +229,57 @@ export default function ContributionStudio() {
             </div>
           </div>
           <h2 className="font-display text-3xl font-bold text-navy mb-3">Your memory has been sealed.</h2>
-          <p className="font-body text-stone leading-relaxed mb-8">
+          <p className="font-body text-stone leading-relaxed mb-6">
             Your contribution has been received and will be reviewed by our community of guardians.
             Once verified, it becomes part of humanity&apos;s permanent cultural record.
           </p>
-          <div className="glass-heavy rounded-xl p-5 text-left mb-8 inline-block">
+
+          {/* Delete token — prominently displayed */}
+          <div className="glass-heavy rounded-2xl p-6 text-left mb-6 border border-gold/20">
+            <div className="flex items-center gap-2 mb-3">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#C8A96B" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+              </svg>
+              <p className="font-ui text-xs font-bold text-gold tracking-widest uppercase">Your Delete Token — Save This!</p>
+            </div>
+            <p className="font-body text-xs text-stone/70 mb-4 leading-relaxed">
+              This is the only way to delete your contribution later. We cannot recover it for you.
+              Copy it somewhere safe, or visit <strong>/profile</strong> to manage your contribution.
+            </p>
+            <div className="flex items-center gap-3">
+              <code className="flex-1 font-mono text-sm text-navy bg-white/60 rounded-lg px-4 py-3 break-all border border-border/30">
+                {sealResult.deleteToken}
+              </code>
+              <button
+                onClick={handleCopyToken}
+                className="shrink-0 font-ui text-xs px-4 py-3 glass-navy-heavy text-ivory rounded-lg hover:bg-navy transition-colors focus-ring"
+                aria-label="Copy delete token"
+              >
+                {tokenCopied ? '✓ Copied' : 'Copy'}
+              </button>
+            </div>
+          </div>
+
+          <div className="glass-heavy rounded-xl p-5 text-left mb-6 inline-block w-full">
             <p className="font-ui text-xs text-stone/50 tracking-widest uppercase mb-2">Your contribution</p>
             <p className="font-display text-base font-bold text-navy">{title}</p>
             <p className="font-ui text-xs text-stone mt-1">{lang?.name} · {contentType}</p>
           </div>
-          <div className="flex flex-col sm:flex-row gap-3 justify-center mt-8">
+
+          <div className="flex flex-col sm:flex-row gap-3 justify-center mt-6">
             <button
               onClick={() => {
-                setSubmitted(false); setStep(1); setSelectedLanguage(''); setContentType('')
+                setSubmitted(false); setSealResult(null); setStep(1); setSelectedLanguage(''); setContentType('')
                 setTitle(''); setBody(''); setContext(''); setAudioFile(null); setAudioS3Key(null);
-                setConsentChecked(false); setSource(''); setLocation('')
+                setConsentChecked(false); setSource(''); setLocation(''); setContributorName('')
               }}
               className="font-ui text-sm px-6 py-3 glass-navy-heavy text-ivory rounded-xl hover:bg-navy transition-colors min-h-[44px] focus-ring"
             >
               Preserve Another Memory
             </button>
-            <a href="/explore" className="font-ui text-sm px-6 py-3 glass rounded-xl text-navy font-medium hover:shadow-md transition-all min-h-[44px] focus-ring flex items-center justify-center">
-              Explore the Atlas
+            <a href="/profile" className="font-ui text-sm px-6 py-3 glass-gold rounded-xl text-navy font-medium hover:shadow-md transition-all min-h-[44px] focus-ring flex items-center justify-center">
+              Manage My Contribution
             </a>
           </div>
         </div>
@@ -253,7 +336,7 @@ export default function ContributionStudio() {
 
               <div className="mt-4 glass-gold rounded-xl p-4">
                 <p className="font-ui text-xs text-stone/60 leading-relaxed">
-                  No account required. Your contribution will be permanently preserved
+                  No account required. Add your name and your contribution will be permanently preserved
                   in humanity&apos;s cultural record under open cultural license.
                 </p>
               </div>
@@ -264,7 +347,7 @@ export default function ContributionStudio() {
                   <p className="font-ui text-[10px] text-gold tracking-widest uppercase mb-1">Registered</p>
                   <p className="font-display text-sm font-bold text-navy">{registeredLang.languageName}</p>
                   <p className="font-body text-xs text-stone/60 mt-0.5">
-                    Under review by Oralis curators. You&apos;ll hear from us at {registeredLang.contributorEmail}.
+                    Under review by Oralis curators.
                   </p>
                 </div>
               )}
@@ -439,7 +522,7 @@ export default function ContributionStudio() {
                     role="button"
                     tabIndex={0}
                     onKeyDown={(e) => e.key === 'Enter' && audioInputRef.current?.click()}
-                    aria-label={audioS3Key ? `Uploaded ${audioFile?.name}` : "Upload audio file"}
+                    aria-label={audioS3Key ? `Uploaded ${audioFile?.name}` : 'Upload audio file'}
                   >
                     {audioUploading ? (
                       <div>
@@ -469,7 +552,7 @@ export default function ContributionStudio() {
                           </svg>
                         </div>
                         <p className="font-display text-base font-bold text-navy mb-1">Drop audio file here</p>
-                        <p className="font-ui text-sm text-stone mb-3">MP3, WAV, FLAC, M4A — up to 500MB</p>
+                        <p className="font-ui text-sm text-stone mb-3">MP3, WAV, FLAC, M4A — up to <strong>10 MB</strong></p>
                         <span className="font-ui text-xs text-gold">Or click to browse</span>
                       </div>
                     )}
@@ -485,7 +568,7 @@ export default function ContributionStudio() {
                 </div>
               )}
 
-              {/* ── Step 4: Cultural context ───────────────────── */}
+              {/* ── Step 4: Cultural context + Contributor name ─────────────── */}
               {step === 4 && (
                 <div>
                   <h2 className="font-display text-3xl font-bold text-navy mb-2">Provide the context.</h2>
@@ -535,6 +618,28 @@ export default function ContributionStudio() {
                         className="w-full px-4 py-3 glass rounded-xl font-body text-sm focus-ring text-navy placeholder:text-stone/40 min-h-[44px]"
                       />
                     </div>
+
+                    {/* ── Contributor name — required, no account ── */}
+                    <div className="glass rounded-xl p-5 border border-gold/20">
+                      <label htmlFor="contributor-name" className="block font-ui text-xs font-medium tracking-wide text-stone mb-2">
+                        Your name *
+                      </label>
+                      <input
+                        id="contributor-name"
+                        type="text"
+                        value={contributorName}
+                        onChange={(e) => setContributorName(e.target.value)}
+                        placeholder="How should you be credited in the archive?"
+                        className="w-full px-4 py-3 glass rounded-xl font-body text-sm focus-ring text-navy placeholder:text-stone/40 min-h-[44px]"
+                        aria-required="true"
+                        autoComplete="name"
+                      />
+                      <p className="font-body text-xs text-stone/50 mt-2">
+                        No account needed. Your name will appear alongside this contribution.
+                        You&apos;ll receive a delete token after submission to manage it later.
+                      </p>
+                    </div>
+
                     <div className="flex items-start gap-4 glass rounded-xl p-4">
                       <div className="flex items-center h-5">
                         <input
@@ -567,9 +672,10 @@ export default function ContributionStudio() {
                       { label: 'Culture',          value: lang?.name ?? '—' },
                       { label: 'Memory Type',      value: contentType || '—' },
                       { label: 'Title',            value: title || '—' },
-                      { label: 'Audio',            value: audioS3Key ? `Uploaded ✓` : 'Not included' },
+                      { label: 'Audio',            value: audioS3Key ? 'Uploaded ✓' : 'Not included' },
                       { label: 'Cultural Context', value: context ? `${context.slice(0, 80)}…` : '—' },
                       { label: 'Location',         value: location || '—' },
+                      { label: 'Contributor',      value: contributorName || '—' },
                     ].map(({ label, value }) => (
                       <div key={label} className="flex items-start gap-4 border-b border-border/20 pb-4">
                         <span className="font-ui text-xs text-stone/50 w-36 shrink-0 pt-0.5 tracking-wide">{label}</span>
@@ -582,6 +688,7 @@ export default function ContributionStudio() {
                     <p className="font-ui text-xs text-stone/60 leading-relaxed">
                       By sealing this record, you confirm this contribution will be preserved in the Oralis
                       cultural atlas and made available under Creative Commons Attribution 4.0 International license.
+                      You will receive a delete token after sealing.
                     </p>
                   </div>
                 </div>
