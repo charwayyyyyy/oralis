@@ -154,63 +154,71 @@
     font-family: var(--font-inter), 'Helvetica Neue', sans-serif;
   }
 
+  /* ─── Accessibility ──────────────────────────── */
+  .focus-ring {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold focus-visible:ring-offset-2 focus-visible:ring-offset-background;
+  }
+  .focus-ring-navy {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy focus-visible:ring-offset-2 focus-visible:ring-offset-background;
+  }
+
   /* ─── Glassmorphism Surfaces ─────────────────── */
   .glass {
-    background: rgba(253, 251, 247, 0.55);
+    background: rgba(253, 251, 247, 0.75); /* Increased from 0.55 for readability */
     backdrop-filter: blur(20px) saturate(1.4);
     -webkit-backdrop-filter: blur(20px) saturate(1.4);
-    border: 1px solid rgba(221, 216, 206, 0.4);
+    border: 1px solid rgba(221, 216, 206, 0.6);
     box-shadow:
       0 8px 32px rgba(27, 42, 94, 0.06),
       inset 0 1px 0 rgba(255, 255, 255, 0.5);
   }
 
   .glass-heavy {
-    background: rgba(253, 251, 247, 0.82);
+    background: rgba(253, 251, 247, 0.90); /* Increased from 0.82 */
     backdrop-filter: blur(24px) saturate(1.5);
     -webkit-backdrop-filter: blur(24px) saturate(1.5);
-    border: 1px solid rgba(221, 216, 206, 0.5);
+    border: 1px solid rgba(221, 216, 206, 0.7);
     box-shadow:
       0 8px 32px rgba(27, 42, 94, 0.08),
       inset 0 1px 0 rgba(255, 255, 255, 0.6);
   }
 
   .glass-navy {
-    background: rgba(27, 42, 94, 0.65);
+    background: rgba(27, 42, 94, 0.85); /* Increased from 0.65 */
     backdrop-filter: blur(24px) saturate(1.3);
     -webkit-backdrop-filter: blur(24px) saturate(1.3);
-    border: 1px solid rgba(200, 169, 107, 0.12);
+    border: 1px solid rgba(200, 169, 107, 0.2);
     box-shadow:
-      0 8px 40px rgba(10, 18, 48, 0.25),
-      inset 0 1px 0 rgba(200, 169, 107, 0.08);
-  }
-
-  .glass-navy-heavy {
-    background: rgba(27, 42, 94, 0.88);
-    backdrop-filter: blur(28px) saturate(1.4);
-    -webkit-backdrop-filter: blur(28px) saturate(1.4);
-    border: 1px solid rgba(200, 169, 107, 0.15);
-    box-shadow:
-      0 12px 48px rgba(10, 18, 48, 0.35),
+      0 8px 40px rgba(10, 18, 48, 0.35),
       inset 0 1px 0 rgba(200, 169, 107, 0.1);
   }
 
+  .glass-navy-heavy {
+    background: rgba(27, 42, 94, 0.96); /* Increased from 0.88 for mobile visibility */
+    backdrop-filter: blur(28px) saturate(1.4);
+    -webkit-backdrop-filter: blur(28px) saturate(1.4);
+    border: 1px solid rgba(200, 169, 107, 0.25);
+    box-shadow:
+      0 12px 48px rgba(10, 18, 48, 0.45),
+      inset 0 1px 0 rgba(200, 169, 107, 0.15);
+  }
+
   .glass-dark {
-    background: rgba(10, 18, 48, 0.6);
+    background: rgba(10, 18, 48, 0.85); /* Increased from 0.6 */
     backdrop-filter: blur(20px) saturate(1.2);
     -webkit-backdrop-filter: blur(20px) saturate(1.2);
-    border: 1px solid rgba(200, 169, 107, 0.08);
-    box-shadow: 0 8px 40px rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(200, 169, 107, 0.15);
+    box-shadow: 0 8px 40px rgba(0, 0, 0, 0.4);
   }
 
   .glass-gold {
-    background: rgba(200, 169, 107, 0.08);
+    background: rgba(200, 169, 107, 0.15);
     backdrop-filter: blur(16px) saturate(1.3);
     -webkit-backdrop-filter: blur(16px) saturate(1.3);
-    border: 1px solid rgba(200, 169, 107, 0.2);
+    border: 1px solid rgba(200, 169, 107, 0.3);
     box-shadow:
-      0 4px 24px rgba(200, 169, 107, 0.06),
-      inset 0 1px 0 rgba(200, 169, 107, 0.12);
+      0 4px 24px rgba(200, 169, 107, 0.08),
+      inset 0 1px 0 rgba(200, 169, 107, 0.15);
   }
 
   /* ─── Atlas spatial animations ───────────────── */

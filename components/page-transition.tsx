@@ -7,7 +7,6 @@ import { useEffect, useState, useRef } from 'react'
 function getDepth(path: string): number {
   if (path === '/') return 0
   if (path === '/explore') return 1
-  if (path === '/insights') return 1
   if (path === '/contribute') return 1
   if (path === '/profile') return 1
   if (path.startsWith('/language/')) return 2

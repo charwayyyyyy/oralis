@@ -10,7 +10,6 @@ const navLinks = [
   { href: '/explore',    label: 'Discover',    depth: 'Regional Discovery' },
   { href: '/contribute', label: 'Preserve',    depth: 'Contribution Ritual' },
   { href: '/observatory',   label: 'Observatory', depth: 'Global Observatory' },
-  { href: '/insights',   label: 'Insights', depth: 'Global Insights' },
 ]
 
 function getAtlasDepth(pathname: string) {
@@ -38,13 +37,14 @@ export default function Navigation() {
   return (
     <>
       {/* Nav is always glass-heavy and always visible — no scroll logic */}
-      <header className="fixed top-0 left-0 right-0 z-50 glass-heavy border-b border-border/20">
+      <header className="fixed top-0 left-0 right-0 z-50 glass-heavy border-b border-border/20" role="banner">
         <nav
           className="max-w-7xl mx-auto px-6 lg:px-12 flex items-center justify-between"
           style={{ height: '72px' }}
+          aria-label="Main Navigation"
         >
           {/* Logo lockup */}
-          <Link href="/" className="flex items-center gap-3 group" aria-label="Oralis — World View">
+          <Link href="/" className="flex items-center gap-3 group focus-ring rounded-lg p-1 -ml-1" aria-label="Oralis — World View">
             <span
               className={cn(
                 'relative grid place-items-center h-12 w-[4.25rem] rounded-lg overflow-hidden transition-all duration-500',
@@ -76,7 +76,7 @@ export default function Navigation() {
 
           {/* Depth level indicator — subtle, left of logo */}
           {!isHome && (
-            <div className="hidden lg:flex items-center gap-2 ml-6">
+            <div className="hidden lg:flex items-center gap-2 ml-6" aria-hidden="true">
               <span className="font-ui text-[10px] tracking-[0.2em] uppercase text-gold/50">
                 {depth.level}
               </span>
@@ -84,30 +84,32 @@ export default function Navigation() {
           )}
 
           {/* Desktop Links */}
-          <div className="hidden md:flex items-center gap-8">
+          <div className="hidden md:flex items-center gap-6">
             {navLinks.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
+                aria-current={pathname === link.href ? 'page' : undefined}
                 className={cn(
-                  'font-ui text-sm tracking-wide transition-colors relative group',
+                  'font-ui text-sm tracking-wide transition-colors relative group focus-ring rounded-md px-2 py-1.5',
                   pathname === link.href
-                    ? 'text-navy font-medium'
-                    : 'text-stone hover:text-navy'
+                    ? 'text-navy font-bold'
+                    : 'text-stone hover:text-navy font-medium'
                 )}
               >
                 {link.label}
                 <span className={cn(
-                  'absolute -bottom-1 left-0 h-px bg-gold transition-all duration-300',
-                  pathname === link.href ? 'w-full' : 'w-0 group-hover:w-full'
+                  'absolute -bottom-0 left-2 right-2 h-0.5 bg-gold transition-all duration-300',
+                  pathname === link.href ? 'opacity-100 scale-x-100' : 'opacity-0 scale-x-0 group-hover:opacity-100 group-hover:scale-x-100'
                 )} />
               </Link>
             ))}
 
-            {/* CTA — always navy */}
+            {/* CTA — high contrast */}
             <Link
               href="/contribute"
-              className="font-ui text-sm px-5 py-2.5 transition-all tracking-wide rounded-lg glass-navy-heavy text-ivory hover:bg-navy"
+              className="ml-2 font-ui text-sm px-6 py-2.5 font-bold tracking-wide rounded-lg bg-gold text-navy hover:bg-gold-warm transition-all shadow-md focus-ring"
+              aria-label="Contribute a language memory"
             >
               Leave a Memory
             </Link>
@@ -115,7 +117,7 @@ export default function Navigation() {
 
           {/* Mobile hamburger */}
           <button
-            className="md:hidden flex flex-col gap-1.5 p-2"
+            className="md:hidden flex flex-col gap-1.5 p-3 focus-ring rounded-md min-h-[44px] min-w-[44px] justify-center items-center"
             onClick={() => setMenuOpen(!menuOpen)}
             aria-label={menuOpen ? 'Close menu' : 'Open menu'}
             aria-expanded={menuOpen}
@@ -124,7 +126,7 @@ export default function Navigation() {
               <span
                 key={i}
                 className={cn(
-                  'block h-px bg-navy transition-all duration-300',
+                  'block h-[2px] bg-navy transition-all duration-300',
                   i === 0 && menuOpen ? 'w-6 rotate-45 translate-y-2'  : 'w-6',
                   i === 1 && menuOpen ? 'w-0 opacity-0'                 : 'w-5',
                   i === 2 && menuOpen ? 'w-6 -rotate-45 -translate-y-2': 'w-6',
@@ -142,48 +144,56 @@ export default function Navigation() {
           menuOpen ? 'translate-x-0' : 'translate-x-full'
         )}
         aria-hidden={!menuOpen}
+        role="dialog"
+        aria-label="Mobile Navigation"
       >
-        <div className="flex-1 flex flex-col justify-center px-10 gap-8 pt-24">
-          <div className="mb-4">
-            <span className="font-ui text-[10px] text-ivory/25 tracking-[0.3em] uppercase">Navigate the Atlas</span>
+        <div className="flex-1 flex flex-col justify-center px-10 gap-6 pt-24 overflow-y-auto atlas-scroll">
+          <div className="mb-2">
+            <span className="font-ui text-[10px] text-ivory/40 tracking-[0.3em] uppercase font-bold">Navigate the Atlas</span>
           </div>
 
           {navLinks.map((link, i) => (
             <Link
               key={link.href}
               href={link.href}
+              aria-current={pathname === link.href ? 'page' : undefined}
               className={cn(
-                'font-display text-4xl font-bold tracking-tight transition-all',
-                pathname === link.href ? 'text-gold' : 'text-ivory/50 hover:text-ivory'
+                'font-display text-4xl font-bold tracking-tight transition-all py-3 min-h-[44px] flex flex-col focus-ring rounded-lg px-2 -ml-2',
+                pathname === link.href ? 'text-gold' : 'text-ivory/80 hover:text-ivory'
               )}
               style={{ transitionDelay: menuOpen ? `${i * 60}ms` : '0ms' }}
             >
-              <span className="block">{link.label}</span>
-              <span className="block font-ui text-xs font-normal tracking-widest uppercase text-ivory/20 mt-1">
+              <span>{link.label}</span>
+              <span className="font-ui text-xs font-normal tracking-widest uppercase text-ivory/40 mt-1">
                 {link.depth}
               </span>
             </Link>
           ))}
-          <Link
-            href="/contribute"
-            className="mt-4 font-ui text-sm px-6 py-3 glass-gold text-gold tracking-wide inline-block w-fit font-medium rounded-lg hover:bg-gold/15 transition-colors"
-          >
-            Leave a Memory
-          </Link>
+          
+          <div className="pt-8">
+            <Link
+              href="/contribute"
+              className="font-ui text-base px-8 py-4 bg-gold text-navy tracking-wide inline-block w-full text-center font-bold rounded-xl shadow-lg hover:bg-gold-warm transition-colors min-h-[44px] focus-ring"
+            >
+              Leave a Memory
+            </Link>
+          </div>
         </div>
-        <div className="px-10 pb-10 border-t border-ivory/10 pt-6 flex items-center gap-3">
-          <span className="relative grid place-items-center h-10 w-14 rounded-lg overflow-hidden bg-ivory border border-gold/40">
-            <span
-              aria-hidden="true"
-              className="absolute inset-0 bg-no-repeat"
-              style={{
-                backgroundImage: 'url(/oralis-logo.png)',
-                backgroundSize: '303% 400%',
-                backgroundPosition: '55% 22%',
-              }}
-            />
-          </span>
-          <span className="font-display text-lg font-bold text-ivory/60">Oralis</span>
+        <div className="px-10 pb-10 pt-6 mt-auto">
+          <div className="border-t border-ivory/20 pt-6 flex items-center gap-4">
+            <span className="relative grid place-items-center h-12 w-16 rounded-lg overflow-hidden bg-ivory border border-gold/40 shadow-sm">
+              <span
+                aria-hidden="true"
+                className="absolute inset-0 bg-no-repeat"
+                style={{
+                  backgroundImage: 'url(/oralis-logo.png)',
+                  backgroundSize: '303% 400%',
+                  backgroundPosition: '55% 22%',
+                }}
+              />
+            </span>
+            <span className="font-display text-xl font-bold text-ivory/90">Oralis</span>
+          </div>
         </div>
       </div>
     </>

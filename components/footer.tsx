@@ -44,7 +44,6 @@ export default function Footer() {
                 { label: 'Discover', href: '/explore' },
                 { label: 'Preserve', href: '/contribute' },
                 { label: 'Observatory', href: '/observatory' },
-                { label: 'Insights', href: '/insights' },
               ].map((link) => (
                 <Link
                   key={link.href}

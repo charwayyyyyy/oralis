@@ -184,18 +184,18 @@ export default function ContributionStudio() {
             <p className="font-display text-base font-bold text-navy">{title}</p>
             <p className="font-ui text-xs text-stone mt-1">{lang?.name} · {contentType}</p>
           </div>
-          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+          <div className="flex flex-col sm:flex-row gap-3 justify-center mt-8">
             <button
               onClick={() => {
                 setSubmitted(false); setStep(1); setSelectedLanguage(''); setContentType('')
-                setTitle(''); setBody(''); setContext(''); setAudioUploaded(false)
+                setTitle(''); setBody(''); setContext(''); setAudioFile(null); setAudioS3Key(null);
                 setConsentChecked(false); setSource(''); setLocation('')
               }}
-              className="font-ui text-sm px-6 py-3 glass-navy-heavy text-ivory rounded-lg hover:bg-navy transition-colors"
+              className="font-ui text-sm px-6 py-3 glass-navy-heavy text-ivory rounded-xl hover:bg-navy transition-colors min-h-[44px] focus-ring"
             >
               Preserve Another Memory
             </button>
-            <a href="/explore" className="font-ui text-sm px-6 py-3 glass rounded-lg text-foreground hover:shadow-md transition-all">
+            <a href="/explore" className="font-ui text-sm px-6 py-3 glass rounded-xl text-navy font-medium hover:shadow-md transition-all min-h-[44px] focus-ring flex items-center justify-center">
               Explore the Atlas
             </a>
           </div>
@@ -292,7 +292,8 @@ export default function ContributionStudio() {
                         <button
                           key={l.id}
                           onClick={() => setSelectedLanguage(l.id)}
-                          className={`w-full flex items-center justify-between px-5 py-4 rounded-xl transition-all text-left ${
+                          aria-pressed={selectedLanguage === l.id}
+                          className={`w-full flex items-center justify-between px-5 py-4 rounded-xl transition-all text-left min-h-[44px] focus-ring ${
                             selectedLanguage === l.id
                               ? 'glass-navy text-ivory shadow-md'
                               : 'glass hover:shadow-sm'
@@ -330,9 +331,9 @@ export default function ContributionStudio() {
                     </p>
                     <button
                       onClick={() => setShowRegister(true)}
-                      className="font-ui text-sm text-gold hover:text-navy transition-colors flex items-center gap-2 group"
+                      className="font-ui text-sm text-gold hover:text-navy transition-colors flex items-center gap-2 group min-h-[44px] px-2 -ml-2 rounded-lg focus-ring w-fit"
                     >
-                      <span className="w-6 h-6 glass-gold rounded-lg flex items-center justify-center text-gold group-hover:bg-gold/20 transition-colors">+</span>
+                      <span className="w-6 h-6 glass-gold rounded-md flex items-center justify-center text-gold group-hover:bg-gold/20 transition-colors" aria-hidden="true">+</span>
                       Register a new language
                     </button>
                   </div>
@@ -359,7 +360,8 @@ export default function ContributionStudio() {
                       <button
                         key={type.id}
                         onClick={() => setContentType(type.id)}
-                        className={`p-5 rounded-xl text-left transition-all ${
+                        aria-pressed={contentType === type.id}
+                        className={`p-5 rounded-xl text-left transition-all min-h-[44px] focus-ring ${
                           contentType === type.id ? 'glass-navy text-ivory shadow-md' : 'glass hover:shadow-sm'
                         }`}
                       >
@@ -371,30 +373,33 @@ export default function ContributionStudio() {
                   </div>
 
                   {contentType && (
-                    <div className="space-y-4">
+                    <div className="space-y-5">
                       <div>
-                        <label className="block font-ui text-xs font-medium tracking-wide text-stone mb-2">
+                        <label htmlFor="contribution-title" className="block font-ui text-xs font-medium tracking-wide text-stone mb-2">
                           Title or Subject *
                         </label>
                         <input
+                          id="contribution-title"
                           type="text"
                           value={title}
                           onChange={(e) => setTitle(e.target.value)}
                           placeholder={`Name this ${contentType}...`}
-                          className="w-full px-4 py-3 glass rounded-lg font-body text-sm focus:outline-none focus:ring-1 focus:ring-gold/30 text-foreground placeholder:text-stone/40"
+                          className="w-full px-4 py-3 glass rounded-xl font-body text-sm focus-ring text-navy placeholder:text-stone/40 min-h-[44px]"
+                          aria-required="true"
                         />
                       </div>
                       {contentType !== 'audio' && (
                         <div>
-                          <label className="block font-ui text-xs font-medium tracking-wide text-stone mb-2">
+                          <label htmlFor="contribution-body" className="block font-ui text-xs font-medium tracking-wide text-stone mb-2">
                             Content
                           </label>
                           <textarea
+                            id="contribution-body"
                             value={body}
                             onChange={(e) => setBody(e.target.value)}
                             rows={6}
                             placeholder="Write the content here..."
-                            className="w-full px-4 py-3 glass rounded-lg font-body text-sm focus:outline-none focus:ring-1 focus:ring-gold/30 text-foreground placeholder:text-stone/40 resize-none"
+                            className="w-full px-4 py-3 glass rounded-xl font-body text-sm focus-ring text-navy placeholder:text-stone/40 resize-none min-h-[44px]"
                           />
                         </div>
                       )}
@@ -425,7 +430,7 @@ export default function ContributionStudio() {
                   />
 
                   <div
-                    className={`rounded-xl p-12 text-center transition-all cursor-pointer ${
+                    className={`rounded-xl p-12 text-center transition-all cursor-pointer min-h-[44px] focus-ring ${
                       audioS3Key ? 'glass-gold shadow-md' : audioUploading ? 'glass border-2 border-gold/20 border-dashed' : 'glass hover:shadow-sm border-2 border-dashed border-border/30'
                     }`}
                     onClick={() => !audioUploading && audioInputRef.current?.click()}
@@ -434,7 +439,7 @@ export default function ContributionStudio() {
                     role="button"
                     tabIndex={0}
                     onKeyDown={(e) => e.key === 'Enter' && audioInputRef.current?.click()}
-                    aria-label="Upload audio file"
+                    aria-label={audioS3Key ? `Uploaded ${audioFile?.name}` : "Upload audio file"}
                   >
                     {audioUploading ? (
                       <div>
@@ -489,52 +494,58 @@ export default function ContributionStudio() {
                     meaning, usage, and cultural significance.
                   </p>
 
-                  <div className="space-y-5">
+                  <div className="space-y-6">
                     <div>
-                      <label className="block font-ui text-xs font-medium tracking-wide text-stone mb-2">
+                      <label htmlFor="contribution-context" className="block font-ui text-xs font-medium tracking-wide text-stone mb-2">
                         Cultural significance and context *
                       </label>
                       <textarea
+                        id="contribution-context"
                         value={context}
                         onChange={(e) => setContext(e.target.value)}
                         rows={5}
                         placeholder="Describe when and how this is used, who uses it, and why it matters to the community..."
-                        className="w-full px-4 py-3 glass rounded-lg font-body text-sm focus:outline-none focus:ring-1 focus:ring-gold/30 text-foreground placeholder:text-stone/40 resize-none"
+                        className="w-full px-4 py-3 glass rounded-xl font-body text-sm focus-ring text-navy placeholder:text-stone/40 resize-none min-h-[44px]"
+                        aria-required="true"
                       />
                     </div>
                     <div>
-                      <label className="block font-ui text-xs font-medium tracking-wide text-stone mb-2">
+                      <label htmlFor="contribution-source" className="block font-ui text-xs font-medium tracking-wide text-stone mb-2">
                         Source or speaker relationship
                       </label>
                       <input
+                        id="contribution-source"
                         type="text"
                         value={source}
                         onChange={(e) => setSource(e.target.value)}
                         placeholder="e.g. Elder, community member, recorded in village ceremony..."
-                        className="w-full px-4 py-3 glass rounded-lg font-body text-sm focus:outline-none focus:ring-1 focus:ring-gold/30 text-foreground placeholder:text-stone/40"
+                        className="w-full px-4 py-3 glass rounded-xl font-body text-sm focus-ring text-navy placeholder:text-stone/40 min-h-[44px]"
                       />
                     </div>
                     <div>
-                      <label className="block font-ui text-xs font-medium tracking-wide text-stone mb-2">
+                      <label htmlFor="contribution-location" className="block font-ui text-xs font-medium tracking-wide text-stone mb-2">
                         Geographic location
                       </label>
                       <input
+                        id="contribution-location"
                         type="text"
                         value={location}
                         onChange={(e) => setLocation(e.target.value)}
                         placeholder="Village, region, or community where this was recorded..."
-                        className="w-full px-4 py-3 glass rounded-lg font-body text-sm focus:outline-none focus:ring-1 focus:ring-gold/30 text-foreground placeholder:text-stone/40"
+                        className="w-full px-4 py-3 glass rounded-xl font-body text-sm focus-ring text-navy placeholder:text-stone/40 min-h-[44px]"
                       />
                     </div>
-                    <div className="flex items-start gap-3">
-                      <input
-                        type="checkbox"
-                        id="contribution-consent"
-                        checked={consentChecked}
-                        onChange={(e) => setConsentChecked(e.target.checked)}
-                        className="mt-1 accent-gold w-4 h-4 shrink-0"
-                      />
-                      <label htmlFor="contribution-consent" className="font-body text-sm text-stone leading-relaxed cursor-pointer">
+                    <div className="flex items-start gap-4 glass rounded-xl p-4">
+                      <div className="flex items-center h-5">
+                        <input
+                          type="checkbox"
+                          id="contribution-consent"
+                          checked={consentChecked}
+                          onChange={(e) => setConsentChecked(e.target.checked)}
+                          className="accent-gold w-5 h-5 rounded focus-ring cursor-pointer"
+                        />
+                      </div>
+                      <label htmlFor="contribution-consent" className="font-body text-sm text-stone leading-relaxed cursor-pointer select-none">
                         I confirm that I have the right to share this content and that the speaker(s)
                         have given informed consent for cultural archiving purposes.
                       </label>
@@ -580,20 +591,20 @@ export default function ContributionStudio() {
               <div className="flex items-center justify-between mt-10 pt-6 border-t border-border/20">
                 <button
                   onClick={() => setStep((s) => Math.max(1, s - 1))}
-                  className={`font-ui text-sm text-stone hover:text-navy transition-colors ${step === 1 ? 'invisible' : ''}`}
+                  className={`font-ui text-sm text-stone hover:text-navy transition-colors min-h-[44px] px-4 -ml-4 rounded-lg focus-ring ${step === 1 ? 'invisible' : ''}`}
                 >
                   ← Back
                 </button>
 
                 {submitError && (
-                  <p className="font-ui text-xs text-red-500 max-w-xs text-center">⚠ {submitError}</p>
+                  <p className="font-ui text-sm font-bold text-red-600 bg-red-50 px-4 py-2 rounded-lg max-w-xs text-center border border-red-200" role="alert">⚠ {submitError}</p>
                 )}
 
                 {step < 5 ? (
                   <button
                     onClick={() => setStep((s) => s + 1)}
                     disabled={!canProceed()}
-                    className="font-ui text-sm px-8 py-3 glass-navy-heavy text-ivory rounded-lg hover:bg-navy transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                    className="font-ui text-sm px-8 py-3 glass-navy-heavy text-ivory rounded-xl hover:bg-navy transition-colors disabled:opacity-30 disabled:cursor-not-allowed min-h-[44px] focus-ring shadow-md"
                   >
                     Continue →
                   </button>
@@ -601,11 +612,11 @@ export default function ContributionStudio() {
                   <button
                     onClick={handleSeal}
                     disabled={submitting}
-                    className="font-ui text-sm px-8 py-3 bg-gold/90 backdrop-blur-sm text-ink font-medium rounded-lg hover:bg-gold transition-all shadow-lg shadow-gold/10 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                    className="font-ui text-sm px-8 py-3 bg-gold text-navy font-bold rounded-xl hover:bg-gold-warm transition-all shadow-lg shadow-gold/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 min-h-[44px] focus-ring"
                   >
                     {submitting ? (
                       <>
-                        <svg className="animate-spin" width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <svg className="animate-spin" width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                           <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeDasharray="30 70" />
                         </svg>
                         Sealing…

@@ -67,7 +67,7 @@ export default function AtlasNarrative() {
   return (
     <section className="bg-ivory" aria-label="The crisis and our mission">
       {/* ─── The Crisis ────────────────────────────── */}
-      <div className="max-w-7xl mx-auto px-6 lg:px-16 py-28 lg:py-40">
+      <div className="max-w-7xl mx-auto px-6 lg:px-16 py-24 lg:py-32">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-16 lg:gap-24 items-start">
           {/* Left — narrative pull */}
           <div className="lg:col-span-5">
@@ -114,7 +114,7 @@ export default function AtlasNarrative() {
 
       {/* ─── The Manifesto ─────────────────────────── */}
       <div className="bg-navy text-ivory">
-        <div className="max-w-7xl mx-auto px-6 lg:px-16 py-28 lg:py-40">
+        <div className="max-w-7xl mx-auto px-6 lg:px-16 py-24 lg:py-32">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-16 lg:gap-24 items-start">
             {/* Left — manifesto */}
             <div className="lg:col-span-5 lg:sticky lg:top-32">

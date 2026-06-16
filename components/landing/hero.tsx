@@ -14,8 +14,8 @@ export default function Hero() {
 
   return (
     <section
-      className="relative min-h-screen flex flex-col bg-navy-abyss overflow-hidden"
-      aria-label="Oralis — World View"
+      className="relative min-h-[100svh] flex flex-col bg-navy-abyss overflow-hidden pt-20"
+      aria-labelledby="hero-heading"
     >
       {/* Deep ambient glow */}
       <div
@@ -40,7 +40,7 @@ export default function Hero() {
         className="absolute inset-0 pointer-events-none"
         style={{
           background: `
-            linear-gradient(to top, rgba(10,18,48,0.97) 0%, rgba(10,18,48,0.6) 35%, rgba(10,18,48,0.08) 65%, rgba(10,18,48,0.25) 100%)
+            linear-gradient(to top, rgba(10,18,48,0.98) 0%, rgba(10,18,48,0.7) 40%, rgba(10,18,48,0.1) 70%, rgba(10,18,48,0.3) 100%)
           `
         }}
         aria-hidden="true"
@@ -48,7 +48,7 @@ export default function Hero() {
 
       {/* Hero text — lower third, editorial */}
       <div className="relative z-10 flex-1 flex flex-col justify-end">
-        <div className="max-w-7xl mx-auto w-full px-6 lg:px-16 pb-8 lg:pb-12">
+        <div className="max-w-7xl mx-auto w-full px-6 lg:px-16 pb-12 lg:pb-16">
           <div
             style={{
               opacity: mounted ? 1 : 0,
@@ -57,50 +57,48 @@ export default function Hero() {
             }}
           >
             {/* Kicker */}
-            <div className="flex items-center gap-4 mb-8">
-              <div className="w-12 h-px bg-gold/30" />
-              <span className="font-ui text-[11px] text-gold/40 tracking-[0.25em] uppercase">
+            <div className="flex items-center gap-4 mb-6 md:mb-8">
+              <div className="w-12 h-px bg-gold/50" />
+              <span className="font-ui text-xs md:text-[11px] text-gold/70 tracking-[0.25em] uppercase font-bold">
                 A Living Atlas of Human Cultural Memory
               </span>
             </div>
 
             {/* Headline */}
-            <h1 className="font-display font-bold text-ivory leading-[1.02] text-balance mb-8"
-              style={{ fontSize: 'clamp(2.8rem, 6.5vw, 5.5rem)' }}
+            <h1 
+              id="hero-heading"
+              className="font-display font-bold text-ivory leading-[1.05] text-balance mb-6 md:mb-8 text-4xl md:text-6xl lg:text-7xl xl:text-[5.5rem]"
             >
               Every language<br />
               <em className="not-italic text-gold">carries a world.</em>
             </h1>
 
-            {/* Subtext — editorial prose, not metrics */}
+            {/* Subtext — Clear Value Proposition */}
             <p
-              className="font-body text-ivory/40 leading-relaxed mb-12"
-              style={{ fontSize: 'clamp(1rem, 1.5vw, 1.15rem)', maxWidth: '36rem' }}
+              className="font-body text-ivory/80 leading-relaxed mb-10 md:mb-12 text-lg md:text-xl max-w-2xl"
             >
-              Explore 2,847 endangered languages across 147 countries.
-              Each dot on this atlas is a living culture — its stories,
-              its sounds, its memory of being human.
+              ORALIS is a global platform dedicated to preserving endangered languages. 
+              Explore thousands of indigenous voices, or contribute recordings and stories to help safeguard humanity&apos;s linguistic heritage.
             </p>
 
-            {/* CTAs — glassmorphism */}
-            <div className="flex flex-wrap items-center gap-5">
+            {/* CTAs — high contrast, accessible */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 sm:gap-5">
               <Link
                 href="/explore"
-                className="group inline-flex items-center gap-3 px-8 py-4 bg-gold/90 backdrop-blur-sm font-ui text-sm font-medium tracking-wide hover:bg-gold transition-all rounded-lg shadow-lg shadow-gold/10"
-                style={{ color: '#1A1814' }}
+                className="group flex justify-center items-center gap-3 px-8 py-4 sm:py-5 bg-gold text-navy font-ui text-base sm:text-lg font-bold tracking-wide hover:bg-gold-warm transition-colors rounded-xl shadow-xl shadow-gold/20 focus-ring min-h-[44px]"
               >
                 Begin Exploring
-                <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true"
-                  className="group-hover:translate-x-0.5 transition-transform duration-300"
+                <svg width="18" height="18" viewBox="0 0 16 16" fill="none" aria-hidden="true"
+                  className="group-hover:translate-x-1 transition-transform duration-300"
                 >
-                  <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               </Link>
               <Link
                 href="/contribute"
-                className="inline-flex items-center gap-3 glass-navy rounded-lg px-6 py-4 font-ui text-sm text-ivory/60 hover:text-ivory/90 transition-all"
+                className="flex justify-center items-center gap-3 glass-navy-heavy rounded-xl px-8 py-4 sm:py-5 font-ui text-base sm:text-lg text-ivory font-medium hover:bg-navy transition-colors border border-ivory/20 hover:border-ivory/40 focus-ring min-h-[44px]"
               >
-                <span className="w-5 h-px bg-gold/30" />
+                <span className="w-5 h-px bg-gold/50 hidden sm:block" aria-hidden="true" />
                 Leave a Memory
               </Link>
             </div>
@@ -109,22 +107,22 @@ export default function Hero() {
       </div>
 
       {/* Bottom ambient bar — glassmorphism */}
-      <div className="relative z-10 border-t border-ivory/5">
+      <div className="relative z-10 border-t border-ivory/10">
         <div className="glass-dark">
-          <div className="max-w-7xl mx-auto px-6 lg:px-16 py-4 flex flex-wrap items-center gap-8 lg:gap-14">
+          <div className="max-w-7xl mx-auto px-6 lg:px-16 py-5 flex flex-wrap items-center gap-6 lg:gap-14">
             {[
-              { value: '2,847', label: 'languages in the atlas' },
+              { value: '2,847', label: 'languages indexed' },
               { value: '38.4K', label: 'cultural guardians' },
-              { value: '186K',  label: 'hours of memory preserved' },
+              { value: '186K',  label: 'hours preserved' },
             ].map(({ value, label }) => (
               <div key={label} className="flex items-baseline gap-2.5">
-                <span className="font-display text-lg font-bold text-gold/70">{value}</span>
-                <span className="font-ui text-[10px] text-ivory/20 tracking-wide">{label}</span>
+                <span className="font-display text-lg lg:text-xl font-bold text-gold/90">{value}</span>
+                <span className="font-ui text-[10px] lg:text-xs text-ivory/50 tracking-wide uppercase">{label}</span>
               </div>
             ))}
-            <div className="ml-auto hidden sm:flex items-center gap-2.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-gold/40 animate-pulse" />
-              <span className="font-ui text-[10px] text-ivory/15 tracking-widest uppercase">Atlas live</span>
+            <div className="ml-auto hidden md:flex items-center gap-3">
+              <span className="w-2 h-2 rounded-full bg-gold/60 animate-pulse" />
+              <span className="font-ui text-xs text-ivory/40 tracking-widest uppercase font-bold">Atlas live</span>
             </div>
           </div>
         </div>

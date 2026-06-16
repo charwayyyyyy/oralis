@@ -9,7 +9,7 @@ ORALIS is a modern, production‑grade web application that enables communities 
 - **Language Management** – Create new language entries, edit metadata, and view a searchable list.
 - **Contribution Wizard** – Record text and audio contributions in‑browser and upload them directly to S3.
 - **Observatory (Read‑Optimised)** – Public view of all languages with real‑time contribution counts, audio playback, and cultural context.
-- **Global Navigation** – Persistent navigation bar and footer with links to Home, Explore, Observatory, Insights, and Profile.
+- **Global Navigation** – Persistent navigation bar and footer with links to Home, Explore, Observatory, and Profile.
 
 ## 🏗️ Architecture
 
