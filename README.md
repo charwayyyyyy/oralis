@@ -17,7 +17,7 @@ The system follows a **single‑table DynamoDB design** combined with serverless
 
 ### Component Diagram
 
-![ORALIS Architecture Diagram](/Public/architecture.png)
+![ORALIS Architecture Diagram](/public/architecture.png)
 
 #### Front‑end (Next.js React)
 
