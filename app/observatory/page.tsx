@@ -24,10 +24,16 @@ export default function ObservatoryPage() {
   useEffect(() => {
     async function fetchLanguages() {
       try {
-        const res = await fetch('/api/language/list')
+        const res = await fetch('/api/language/list', { cache: 'no-store' })
         if (!res.ok) throw new Error('Failed to fetch languages')
         const data = await res.json()
-        setLanguages(data.languages || [])
+        
+        // Filter out languages that have no actual contributions
+        const activeLanguages = (data.languages || []).filter(
+          (lang: Language) => ((lang.audioCount || 0) + (lang.storiesArchived || 0)) > 0
+        )
+        
+        setLanguages(activeLanguages)
       } catch (e: any) {
         setError(e.message)
       } finally {
@@ -74,7 +80,7 @@ export default function ObservatoryPage() {
               </svg>
             </div>
             <p className="font-ui text-[10px] uppercase tracking-widest text-stone/40 mt-3 text-right">
-              {filteredLanguages.length} Languages Indexed
+              {languages.length} Languages Active
             </p>
           </div>
         </div>
@@ -90,6 +96,11 @@ export default function ObservatoryPage() {
           <div className="glass-heavy rounded-2xl p-12 text-center max-w-lg mx-auto border-red-500/20">
             <p className="font-ui text-sm text-red-500 mb-4">Error loading observatory</p>
             <p className="font-body text-stone">{error}</p>
+          </div>
+        ) : languages.length === 0 ? (
+          <div className="glass rounded-2xl p-24 text-center border border-dashed border-stone/20">
+            <h3 className="font-display text-2xl font-bold text-navy mb-4">No language memories have been recorded yet.</h3>
+            <p className="font-body text-stone/60">Be the first contributor to preserve a language.</p>
           </div>
         ) : filteredLanguages.length === 0 ? (
           <div className="glass rounded-2xl p-24 text-center border border-dashed border-stone/20">

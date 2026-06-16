@@ -1,9 +1,20 @@
 import Link from 'next/link'
-import { LANGUAGES, VITALITY_STATUS_LABELS, VITALITY_STATUS_COLORS, formatSpeakers } from '@/lib/data'
+import { VITALITY_STATUS_LABELS, VITALITY_STATUS_COLORS, formatSpeakers } from '@/lib/data'
+import { getAllLanguages } from '@/lib/services/languages'
 
-const featured = LANGUAGES.slice(0, 5)
+export default async function FeaturedLanguages() {
+  const allLanguages = await getAllLanguages()
+  
+  // Only feature languages that have actual real-world contributions in DynamoDB
+  const featured = allLanguages
+    .filter(l => ((l.audioCount || 0) + (l.storiesArchived || 0)) > 0)
+    .sort((a, b) => ((b.audioCount || 0) + (b.storiesArchived || 0)) - ((a.audioCount || 0) + (a.storiesArchived || 0)))
+    .slice(0, 5)
 
-export default function FeaturedLanguages() {
+  if (featured.length === 0) {
+    return null // Hide the featured section entirely if nothing is active yet
+  }
+
   return (
     <section className="bg-surface border-b border-border" aria-label="Featured endangered languages">
       <div className="max-w-7xl mx-auto px-6 lg:px-16 py-24 lg:py-32">
@@ -24,7 +35,7 @@ export default function FeaturedLanguages() {
               href="/explore"
               className="inline-flex items-center gap-2 font-ui text-sm text-stone hover:text-navy transition-colors group"
             >
-              <span>View all 2,847 languages</span>
+              <span>View all {allLanguages.length.toLocaleString()} indexed languages</span>
               <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true"
                 className="group-hover:translate-x-0.5 transition-transform">
                 <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -123,7 +134,7 @@ export default function FeaturedLanguages() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2 mt-5 font-ui text-xs text-stone/50 group-hover:text-navy transition-colors">
-                    <span>{lang.audioCount.toLocaleString()} recordings</span>
+                    <span>{((lang.audioCount || 0) + (lang.storiesArchived || 0)).toLocaleString()} Contributions</span>
                     <span className="ml-auto">
                       <svg width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true"
                         className="group-hover:translate-x-0.5 transition-transform">

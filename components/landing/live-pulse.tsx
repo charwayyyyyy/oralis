@@ -2,32 +2,61 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { RECENT_CONTRIBUTIONS } from '@/lib/data'
 
-const PULSE_MESSAGES = RECENT_CONTRIBUTIONS.map((c) => ({
-  contributor: c.contributor,
-  action: c.type === 'audio' ? 'preserved a recording of' : c.type === 'story' ? 'archived an oral tradition in' : c.type === 'vocabulary' ? 'documented vocabulary in' : 'added cultural context for',
-  language: c.languageName,
-  title: c.title,
-  date: c.date,
-}))
+interface PulseMessage {
+  contributor: string
+  action: string
+  language: string
+  title: string
+  date: string
+}
 
 export default function LivePulse() {
+  const [messages, setMessages] = useState<PulseMessage[]>([])
   const [currentIndex, setCurrentIndex] = useState(0)
   const [isVisible, setIsVisible] = useState(true)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    async function fetchFeed() {
+      try {
+        const res = await fetch('/api/feed?limit=10', { cache: 'no-store' })
+        const data = await res.json()
+        if (data.success && data.items.length > 0) {
+          const formatted = data.items.map((c: any) => ({
+            contributor: c.contributorId || 'Anonymous Guardian',
+            action: c.type === 'audio' ? 'preserved a recording of' : c.type === 'story' ? 'archived an oral tradition in' : c.type === 'vocabulary' ? 'documented vocabulary in' : 'added cultural context for',
+            language: c.languageName,
+            title: c.text || c.title || 'New Contribution',
+            date: new Date(c.createdAt).toLocaleDateString(),
+          }))
+          setMessages(formatted)
+        }
+      } catch (e) {
+        console.error('Failed to fetch pulse feed', e)
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchFeed()
+  }, [])
+
+  useEffect(() => {
+    if (messages.length === 0) return
+
     const interval = setInterval(() => {
       setIsVisible(false)
       setTimeout(() => {
-        setCurrentIndex((i) => (i + 1) % PULSE_MESSAGES.length)
+        setCurrentIndex((i) => (i + 1) % messages.length)
         setIsVisible(true)
       }, 600)
     }, 5000)
     return () => clearInterval(interval)
-  }, [])
+  }, [messages.length])
 
-  const current = PULSE_MESSAGES[currentIndex]
+  if (loading) return null // Or a subtle skeleton if preferred
+
+  const current = messages.length > 0 ? messages[currentIndex] : null
 
   return (
     <section className="bg-ivory border-t border-border" aria-label="Live cultural preservation activity">
@@ -41,25 +70,34 @@ export default function LivePulse() {
           </div>
 
           {/* Animated pulse message */}
-          <div className="min-h-[120px] flex items-center justify-center mb-12">
-            <div
-              style={{
-                opacity: isVisible ? 1 : 0,
-                transform: isVisible ? 'translateY(0)' : 'translateY(12px)',
-                transition: 'opacity 0.6s ease, transform 0.6s ease',
-              }}
-            >
-              <p className="font-body text-stone text-lg lg:text-xl leading-relaxed mb-3">
-                <span className="font-display font-bold text-navy">{current.contributor}</span>
-                {' '}{current.action}{' '}
-                <span className="font-display font-bold text-gold">{current.language}</span>
-              </p>
-              <p className="font-display text-base italic text-navy/60">
-                &ldquo;{current.title}&rdquo;
-              </p>
-              <p className="font-ui text-xs text-stone/40 mt-2">{current.date}</p>
+          {current ? (
+            <div className="min-h-[120px] flex items-center justify-center mb-12">
+              <div
+                style={{
+                  opacity: isVisible ? 1 : 0,
+                  transform: isVisible ? 'translateY(0)' : 'translateY(12px)',
+                  transition: 'opacity 0.6s ease, transform 0.6s ease',
+                }}
+              >
+                <p className="font-body text-stone text-lg lg:text-xl leading-relaxed mb-3">
+                  <span className="font-display font-bold text-navy">{current.contributor}</span>
+                  {' '}{current.action}{' '}
+                  <span className="font-display font-bold text-gold">{current.language}</span>
+                </p>
+                <p className="font-display text-base italic text-navy/60">
+                  &ldquo;{current.title}&rdquo;
+                </p>
+                <p className="font-ui text-xs text-stone/40 mt-2">{current.date}</p>
+              </div>
             </div>
-          </div>
+          ) : (
+             <div className="min-h-[120px] flex items-center justify-center mb-12">
+                <p className="font-body text-stone text-lg lg:text-xl leading-relaxed mb-3 text-center">
+                  <span className="font-display italic text-navy/60">No live contributions at this moment.</span><br/>
+                  <span className="font-ui text-sm text-stone/60 mt-2 block">Be the first guardian to add an entry today.</span>
+                </p>
+             </div>
+          )}
 
           {/* Activity pulse indicator — glassmorphism */}
           <div className="inline-flex items-center gap-4 glass rounded-full px-6 py-3">
@@ -68,7 +106,7 @@ export default function LivePulse() {
               <span className="absolute w-2 h-2 rounded-full bg-gold/40 animate-ping" />
             </span>
             <span className="font-ui text-sm text-navy/70">
-              <span className="font-display font-bold text-navy">847</span> guardians preserving cultures right now
+              <span className="font-display font-bold text-navy">Live</span> guardians preserving cultures right now
             </span>
           </div>
 

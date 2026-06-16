@@ -1,5 +1,6 @@
 import Link from 'next/link'
-import { RECENT_CONTRIBUTIONS } from '@/lib/data'
+import { QueryCommand } from '@aws-sdk/lib-dynamodb'
+import { getDb, TABLE_NAME } from '@/lib/aws/dynamodb'
 
 const TYPE_LABELS: Record<string, string> = {
   audio: 'Audio Recording',
@@ -8,7 +9,26 @@ const TYPE_LABELS: Record<string, string> = {
   'cultural-context': 'Cultural Context',
 }
 
-export default function ContributionsFeed() {
+export default async function ContributionsFeed() {
+  const db = getDb()
+  
+  let recentContributions = []
+  try {
+    const result = await db.send(new QueryCommand({
+      TableName: TABLE_NAME,
+      IndexName: 'GSI1',
+      KeyConditionExpression: 'GSI1PK = :pk',
+      ExpressionAttributeValues: {
+        ':pk': 'FEED',
+      },
+      ScanIndexForward: false,
+      Limit: 5,
+    }))
+    recentContributions = result.Items || []
+  } catch (err) {
+    console.error('Failed to fetch recent contributions for feed', err)
+  }
+
   return (
     <section className="bg-ivory border-t border-border" aria-label="Live contributions">
       <div className="max-w-7xl mx-auto px-6 lg:px-16 py-24 lg:py-32">
@@ -31,11 +51,7 @@ export default function ContributionsFeed() {
             <div className="space-y-4 mb-10">
               <div className="flex items-center gap-3">
                 <span className="w-2 h-2 rounded-full bg-gold animate-pulse shrink-0" />
-                <span className="font-ui text-sm text-navy">847 contributors active now</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <span className="w-1.5 h-1.5 rounded-full bg-border shrink-0" />
-                <span className="font-ui text-sm text-stone">1,243 contributions in the last hour</span>
+                <span className="font-ui text-sm text-navy">Live updates active</span>
               </div>
             </div>
             <Link
@@ -53,54 +69,65 @@ export default function ContributionsFeed() {
           {/* Right — feed */}
           <div className="lg:col-span-8">
             <div className="divide-y divide-border">
-              {RECENT_CONTRIBUTIONS.map((c) => (
-                <article key={c.id} className="py-7 first:pt-0">
-                  <div className="flex items-start gap-5">
-                    {/* Dot */}
-                    <div className="w-1.5 h-1.5 rounded-full bg-gold mt-2 shrink-0" aria-hidden="true" />
+              {recentContributions.length > 0 ? (
+                recentContributions.map((c: any) => (
+                  <article key={c.id} className="py-7 first:pt-0">
+                    <div className="flex items-start gap-5">
+                      {/* Dot */}
+                      <div className="w-1.5 h-1.5 rounded-full bg-gold mt-2 shrink-0" aria-hidden="true" />
 
-                    <div className="flex-1 min-w-0">
-                      {/* Meta row */}
-                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mb-2">
-                        <span className="font-ui text-[11px] text-stone tracking-wide uppercase">
-                          {TYPE_LABELS[c.type] ?? c.type}
-                        </span>
-                        <span className="text-border" aria-hidden="true">/</span>
-                        <Link
-                          href={`/language/${c.languageId}`}
-                          className="font-ui text-[11px] font-medium text-gold hover:text-navy transition-colors tracking-wide"
-                        >
-                          {c.languageName}
-                        </Link>
-                        {c.verified && (
-                          <>
-                            <span className="text-border" aria-hidden="true">/</span>
-                            <span className="font-ui text-[11px] text-green-700 tracking-widest uppercase">Verified</span>
-                          </>
+                      <div className="flex-1 min-w-0">
+                        {/* Meta row */}
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mb-2">
+                          <span className="font-ui text-[11px] text-stone tracking-wide uppercase">
+                            {TYPE_LABELS[c.type] ?? c.type}
+                          </span>
+                          <span className="text-border" aria-hidden="true">/</span>
+                          <Link
+                            href={`/language/${c.languageId}`}
+                            className="font-ui text-[11px] font-medium text-gold hover:text-navy transition-colors tracking-wide"
+                          >
+                            {c.languageName}
+                          </Link>
+                          {c.verified && (
+                            <>
+                              <span className="text-border" aria-hidden="true">/</span>
+                              <span className="font-ui text-[11px] text-green-700 tracking-widest uppercase">Verified</span>
+                            </>
+                          )}
+                        </div>
+
+                        <h3 className="font-display text-lg font-bold text-navy leading-snug mb-2">
+                          {c.title || c.text || 'New Contribution'}
+                        </h3>
+
+                        {c.excerpt && (
+                          <p className="font-body text-sm text-stone leading-relaxed mb-3 line-clamp-2">
+                            {c.excerpt}
+                          </p>
                         )}
-                      </div>
 
-                      <h3 className="font-display text-lg font-bold text-navy leading-snug mb-2">
-                        {c.title}
-                      </h3>
-
-                      {c.excerpt && (
-                        <p className="font-body text-sm text-stone leading-relaxed mb-3 line-clamp-2">
-                          {c.excerpt}
-                        </p>
-                      )}
-
-                      <div className="flex flex-wrap gap-x-4 gap-y-1 font-ui text-xs text-stone/60">
-                        <span>{c.contributor}</span>
-                        <span aria-hidden="true">&middot;</span>
-                        <span>{c.location}</span>
-                        <span aria-hidden="true">&middot;</span>
-                        <span>{c.date}</span>
+                        <div className="flex flex-wrap gap-x-4 gap-y-1 font-ui text-xs text-stone/60">
+                          <span>{c.contributorId || 'Anonymous Guardian'}</span>
+                          {c.location && (
+                            <>
+                              <span aria-hidden="true">&middot;</span>
+                              <span>{c.location}</span>
+                            </>
+                          )}
+                          <span aria-hidden="true">&middot;</span>
+                          <span>{new Date(c.createdAt).toLocaleDateString()}</span>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </article>
-              ))}
+                  </article>
+                ))
+              ) : (
+                <div className="py-12 text-center">
+                  <p className="font-display italic text-navy/60 mb-2">The feed is currently quiet.</p>
+                  <p className="font-ui text-sm text-stone/60">Be the first to add a cultural memory.</p>
+                </div>
+              )}
             </div>
 
             <div className="pt-6 border-t border-border">

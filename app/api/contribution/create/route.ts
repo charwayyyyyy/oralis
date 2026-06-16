@@ -14,7 +14,8 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { PutCommand } from '@aws-sdk/lib-dynamodb'
+import { revalidatePath } from 'next/cache'
+import { PutCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb'
 import { getDb, TABLE_NAME } from '@/lib/aws/dynamodb'
 
 export const runtime = 'nodejs'
@@ -90,15 +91,44 @@ export async function POST(req: NextRequest) {
 
   try {
     const startTime = Date.now()
+    
+    // 1. Save the contribution record
     await db.send(new PutCommand({ TableName: TABLE_NAME, Item: item }))
+    
+    // 2. Atomic increment of the language metadata counters
+    // Using ADD which atomically increments numbers if they exist, or initializes them to the value if they don't.
+    const isStory = item.type === 'story'
+    await db.send(new UpdateCommand({
+      TableName: TABLE_NAME,
+      Key: {
+        PK: `LANGUAGE#${languageId}`,
+        SK: 'META'
+      },
+      UpdateExpression: 'ADD #countField :inc, #contributors :inc SET #lastUpdate = :now',
+      ExpressionAttributeNames: {
+        '#countField': isStory ? 'storiesArchived' : 'audioCount',
+        '#contributors': 'contributors',
+        '#lastUpdate': 'lastContribution'
+      },
+      ExpressionAttributeValues: {
+        ':inc': 1,
+        ':now': now
+      }
+    }))
+    
     const durationMs = Date.now() - startTime
 
-    console.info(`[API /contribution/create] Successfully saved contribution`, {
+    console.info(`[API /contribution/create] Successfully saved contribution & updated metrics`, {
       contributionId: id,
       sk,
       durationMs,
       table: TABLE_NAME
     })
+
+    // 3. Revalidate frontend paths so the Observatory and Home feed update instantly
+    revalidatePath('/')
+    revalidatePath('/observatory')
+    revalidatePath('/explore')
 
     return NextResponse.json({ success: true, contributionId: id, sk }, { status: 201 })
   } catch (e) {
