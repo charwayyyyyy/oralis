@@ -5,9 +5,8 @@
  * Server-side only — never import in 'use client' components.
  *
  * Single-table design:
- *   PK = LANG#<id>   SK = META        → language metadata
- *   PK = LANG#<id>   SK = CONTRIB#... → contributions (queried separately)
- *   PK = LANG#<id>   SK = AUDIO#...   → audio metadata
+ *   PK = LANGUAGE#<id>   SK = META        → language metadata
+ *   PK = LANGUAGE#<id>   SK = CONTRIBUTION#... → contributions (queried separately)
  */
 
 import {
@@ -20,13 +19,35 @@ import {
 import { getDb, TABLE_NAME } from '@/lib/aws/dynamodb'
 import type { Language, Contribution } from '@/lib/data'
 
+export interface LanguageRegistrationPayload {
+  contributorName:         string
+  contributorEmail:        string
+  contributorRole:         string
+  contributorLocation:     string
+  contributorRelationship: string
+  contributorBio:          string
+  languageName:            string
+  nativeName:              string
+  isoCode:                 string
+  country:                 string
+  region:                  string
+  continent:               string
+  languageFamily:          string
+  estimatedSpeakers:       string
+  vitalityStatus:          string
+  description:             string
+  tags:                    string
+  sources:                 string
+  consent:                 boolean
+}
+
 // ─── Read ─────────────────────────────────────────────────────────────────────
 
 /**
  * Scan the table for all language metadata records.
- * Filter: SK = "META" and PK begins_with "LANG#"
+ * Filter: SK = "META" and PK begins_with "LANGUAGE#"
  *
- * For production at scale, replace with a GSI query.
+ * For production at scale, replace with a GSI query on GSI1PK="ALL_LANGUAGES".
  */
 export async function getAllLanguages(): Promise<Language[]> {
   const db = getDb()
@@ -37,7 +58,7 @@ export async function getAllLanguages(): Promise<Language[]> {
       FilterExpression: 'SK = :sk AND begins_with(PK, :pkPrefix)',
       ExpressionAttributeValues: {
         ':sk':       'META',
-        ':pkPrefix': 'LANG#',
+        ':pkPrefix': 'LANGUAGE#',
       },
     }),
   )
@@ -57,7 +78,7 @@ export async function getLanguageById(id: string): Promise<Language | null> {
     new GetCommand({
       TableName: TABLE_NAME,
       Key: {
-        PK: `LANG#${id}`,
+        PK: `LANGUAGE#${id}`,
         SK: 'META',
       },
     }),
@@ -68,7 +89,7 @@ export async function getLanguageById(id: string): Promise<Language | null> {
 
 /**
  * Fetch all contributions for a given language.
- * SK begins_with "CONTRIB#" — sorted chronologically (newest last).
+ * SK begins_with "CONTRIBUTION#" — sorted chronologically (newest last).
  */
 export async function getLanguageContributions(
   languageId: string,
@@ -81,8 +102,8 @@ export async function getLanguageContributions(
       TableName:              TABLE_NAME,
       KeyConditionExpression: 'PK = :pk AND begins_with(SK, :skPrefix)',
       ExpressionAttributeValues: {
-        ':pk':       `LANG#${languageId}`,
-        ':skPrefix': 'CONTRIB#',
+        ':pk':       `LANGUAGE#${languageId}`,
+        ':skPrefix': 'CONTRIBUTION#',
       },
       ScanIndexForward: false, // newest first
       Limit:            limit,
@@ -105,10 +126,10 @@ export async function putLanguage(lang: Language): Promise<void> {
     new PutCommand({
       TableName: TABLE_NAME,
       Item: {
-        PK: `LANG#${lang.id}`,
+        PK: `LANGUAGE#${lang.id}`,
         SK: 'META',
         // GSI attributes for future continent-based queries
-        GSI1PK: lang.continent,
+        GSI1PK: lang.continent || 'ALL_LANGUAGES',
         GSI1SK: lang.vitalityScore,
         // Spread the full language object
         ...lang,
@@ -134,9 +155,9 @@ export async function batchPutLanguages(languages: Language[]): Promise<void> {
           [TABLE_NAME]: chunk.map((lang) => ({
             PutRequest: {
               Item: {
-                PK:     `LANG#${lang.id}`,
+                PK:     `LANGUAGE#${lang.id}`,
                 SK:     'META',
-                GSI1PK: lang.continent,
+                GSI1PK: lang.continent || 'ALL_LANGUAGES',
                 GSI1SK: lang.vitalityScore,
                 ...lang,
               },
@@ -146,4 +167,28 @@ export async function batchPutLanguages(languages: Language[]): Promise<void> {
       }),
     )
   }
+}
+
+/**
+ * Store a new language registration in the review queue.
+ * PK = NEWLANG#<ISO>  SK = REG#<email>
+ */
+export async function putLanguageRegistration(
+  payload: LanguageRegistrationPayload,
+): Promise<void> {
+  const db  = getDb()
+  const iso = new Date().toISOString()
+
+  await db.send(
+    new PutCommand({
+      TableName: TABLE_NAME,
+      Item: {
+        PK:        `NEWLANG#${iso}`,
+        SK:        `REG#${payload.contributorEmail.toLowerCase()}`,
+        status:    'PENDING_REVIEW',
+        createdAt: iso,
+        ...payload,
+      },
+    }),
+  )
 }

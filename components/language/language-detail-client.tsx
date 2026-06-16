@@ -120,9 +120,9 @@ export default function LanguageDetailClient({ lang }: { lang: Language }) {
           <nav className="flex items-center gap-2 font-ui text-[11px] text-ivory/20 mb-10" aria-label="Atlas depth">
             <Link href="/" className="hover:text-ivory/40 transition-colors">World</Link>
             <span aria-hidden="true">→</span>
-            <Link href="/explore" className="hover:text-ivory/40 transition-colors">{lang.continent}</Link>
+            <Link href="/explore" className="hover:text-ivory/40 transition-colors">{lang.continent || 'World'}</Link>
             <span aria-hidden="true">→</span>
-            <Link href="/explore" className="hover:text-ivory/40 transition-colors">{lang.country}</Link>
+            <Link href="/explore" className="hover:text-ivory/40 transition-colors">{lang.country || lang.region}</Link>
             <span aria-hidden="true">→</span>
             <span className="text-gold/50">{lang.name}</span>
           </nav>
@@ -149,7 +149,7 @@ export default function LanguageDetailClient({ lang }: { lang: Language }) {
               </p>
 
               <div className="flex flex-wrap gap-2">
-                {lang.tags.map((tag) => (
+                {(lang.tags || []).map((tag) => (
                   <span key={tag} className="font-ui text-[11px] px-3 py-1.5 glass-navy rounded-lg text-ivory/30">
                     {tag}
                   </span>
@@ -180,10 +180,10 @@ export default function LanguageDetailClient({ lang }: { lang: Language }) {
 
                 <div className="grid grid-cols-2 gap-4">
                   {[
-                    { label: 'Speakers', value: formatSpeakers(lang.speakers) },
-                    { label: 'Family', value: lang.family },
-                    { label: 'Recordings', value: lang.audioCount.toLocaleString() },
-                    { label: 'Stories', value: lang.storiesArchived.toString() },
+                    { label: 'Speakers', value: formatSpeakers(lang.speakers || 0) },
+                    { label: 'Family', value: lang.family || 'Unknown' },
+                    { label: 'Recordings', value: (lang.audioCount || 0).toLocaleString() },
+                    { label: 'Stories', value: (lang.storiesArchived || 0).toString() },
                   ].map(({ label: fl, value }) => (
                     <div key={fl}>
                       <p className="font-ui text-[10px] text-ivory/15 tracking-wide mb-1">{fl}</p>
@@ -263,12 +263,12 @@ export default function LanguageDetailClient({ lang }: { lang: Language }) {
                 </div>
                 <div className="mt-8 grid grid-cols-2 lg:grid-cols-3 gap-4">
                   {[
-                    { label: 'ISO 639-3', value: lang.iso.toUpperCase() },
-                    { label: 'Region', value: lang.region },
-                    { label: 'Country', value: lang.country },
-                    { label: 'Language Family', value: lang.family },
-                    { label: 'Continent', value: lang.continent },
-                    { label: 'Contributors', value: lang.contributors.toString() },
+                    { label: 'ISO 639-3', value: lang.iso ? lang.iso.toUpperCase() : 'N/A' },
+                    { label: 'Region', value: lang.region || 'Unknown' },
+                    { label: 'Country', value: lang.country || 'Unknown' },
+                    { label: 'Language Family', value: lang.family || 'Unknown' },
+                    { label: 'Continent', value: lang.continent || 'Unknown' },
+                    { label: 'Contributors', value: (lang.contributors || 1).toString() },
                   ].map(({ label, value }) => (
                     <div key={label} className="glass rounded-lg p-4">
                       <p className="font-ui text-[10px] text-stone/40 tracking-wide mb-1">{label}</p>

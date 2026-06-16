@@ -6,8 +6,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { getAllLanguages } from '@/lib/services/languages'
-import { putLanguageRegistration, type LanguageRegistrationPayload } from '@/lib/services/contributions'
+import { getAllLanguages, putLanguageRegistration, type LanguageRegistrationPayload } from '@/lib/services/languages'
 
 export const runtime = 'nodejs'
 

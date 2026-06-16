@@ -10,6 +10,8 @@ interface Language {
   vitalityScore: number
   speakers?: number
   nativeName?: string
+  audioCount?: number
+  storiesArchived?: number
   createdAt?: string
 }
 

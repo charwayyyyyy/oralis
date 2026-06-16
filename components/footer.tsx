@@ -60,7 +60,7 @@ export default function Footer() {
 
         {/* Bottom bar */}
         <div className="py-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center gap-4">
             <p className="font-ui text-[11px] text-ivory/15">
               &copy; {new Date().getFullYear()} Oralis. Every language carries a world.
             </p>

@@ -10,6 +10,8 @@ interface LanguageCardProps {
     vitalityScore: number
     speakers?: number
     nativeName?: string
+    audioCount?: number
+    storiesArchived?: number
   }
 }
 
@@ -45,9 +47,9 @@ export default function LanguageCard({ language }: LanguageCardProps) {
             )}
           </div>
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-full glass-heavy bg-white/80">
-            <span className="w-2 h-2 rounded-full shadow-sm" style={{ backgroundColor: vitColor }} />
+            <span className="w-2 h-2 rounded-full shadow-sm" style={{ backgroundColor: vitColor }} title={`Vitality Score: ${language.vitalityScore || 0}/100`} />
             <span className="font-ui text-xs font-medium text-navy">
-              {language.vitalityScore || 0}/100
+              {((language.audioCount || 0) + (language.storiesArchived || 0)).toLocaleString()} Contributions
             </span>
           </div>
         </div>

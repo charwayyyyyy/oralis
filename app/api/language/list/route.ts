@@ -42,6 +42,8 @@ export async function GET() {
       country: item.country,
       vitalityScore: item.vitalityScore,
       speakers: item.speakers,
+      audioCount: item.audioCount || 0,
+      storiesArchived: item.storiesArchived || 0,
       createdAt: item.createdAt,
     })) || []
 

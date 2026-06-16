@@ -38,16 +38,31 @@ export async function GET(request: Request) {
     const result = await db.send(command)
     const duration = Date.now() - startTime
 
+    const { getPresignedDownloadUrl } = await import('@/lib/aws/s3')
+
+    const items = await Promise.all(
+      (result.Items || []).map(async (item) => {
+        if (item.s3Key) {
+          try {
+            item.audioUrl = await getPresignedDownloadUrl(item.s3Key)
+          } catch (err) {
+            console.error('[API /feed] Failed to sign URL for', item.s3Key, err)
+          }
+        }
+        return item
+      })
+    )
+
     console.info(`[API /feed] Successfully fetched feed`, {
-      itemCount: result.Items?.length || 0,
+      itemCount: items.length,
       durationMs: duration,
       scannedCount: result.ScannedCount
     })
 
     return NextResponse.json({
       success: true,
-      items: result.Items || [],
-      count: result.Items?.length || 0
+      items: items,
+      count: items.length
     })
   } catch (error) {
     console.error(`[API /feed] DynamoDB Query Failed:`, error)
