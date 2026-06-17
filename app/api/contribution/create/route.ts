@@ -47,7 +47,12 @@ export async function POST(req: NextRequest) {
   // ── Zod validation ────────────────────────────────────────────────────────
   const parsed = ContributionCreateSchema.safeParse(raw)
   if (!parsed.success) {
-    const messages = parsed.error.errors.map((e) => e.message).join(', ')
+    const err = parsed.error as any
+    const issues = err?.issues || err?.errors || []
+    const messages = issues.length > 0 
+      ? issues.map((e: any) => e.message).join(', ') 
+      : (err?.message || 'Validation failed')
+      
     console.warn('[API /contribution/create] Validation failed:', messages)
     return NextResponse.json({ error: messages }, { status: 400 })
   }

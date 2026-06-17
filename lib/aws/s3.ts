@@ -31,11 +31,11 @@ function createS3Client(): S3Client {
     region,
     ...(process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY
       ? {
-          credentials: {
-            accessKeyId:     process.env.AWS_ACCESS_KEY_ID,
-            secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-          },
-        }
+        credentials: {
+          accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+          secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+        },
+      }
       : {}),
   })
 }
@@ -50,26 +50,17 @@ export function getS3(): S3Client {
 export const S3_BUCKET = process.env.S3_BUCKET ?? 'oralis-media-prod-001'
 
 export interface PresignedPostResult {
-  url:    string
+  url: string
   fields: Record<string, string>
-  s3Key:  string
+  s3Key: string
   bucket: string
 }
 
-/**
- * Generate a pre-signed POST for direct browser-to-S3 upload.
- *
- * Uses presigned POST (not PUT) so we can enforce server-side Conditions,
- * including a hard content-length-range cap of 10 MB.
- *
- * Key format:  language/<languageId>/<contributorId>/<timestamp>.<ext>
- * URL valid for 5 minutes (300 seconds).
- */
 export async function getPresignedPost(params: {
-  languageId:    string
+  languageId: string
   contributorId: string
-  fileName:      string
-  contentType:   string
+  fileName: string
+  contentType: string
 }): Promise<PresignedPostResult> {
   const { languageId, contributorId, fileName, contentType } = params
 
@@ -82,19 +73,19 @@ export async function getPresignedPost(params: {
 
   // Extract and sanitise extension
   const rawExt = fileName.split('.').pop()?.toLowerCase() ?? 'mp3'
-  const ext    = /^[a-z0-9]{1,5}$/.test(rawExt) ? rawExt : 'mp3'
+  const ext = /^[a-z0-9]{1,5}$/.test(rawExt) ? rawExt : 'mp3'
 
   // Safe IDs (alphanumeric + hyphens only)
-  const safeLang  = languageId.replace(/[^a-z0-9-]/gi, '').toLowerCase()
-  const safeUser  = contributorId.replace(/[^a-z0-9]/gi, '').toLowerCase().slice(0, 32)
+  const safeLang = languageId.replace(/[^a-z0-9-]/gi, '').toLowerCase()
+  const safeUser = contributorId.replace(/[^a-z0-9]/gi, '').toLowerCase().slice(0, 32)
   const timestamp = Date.now()
 
   const s3Key = `language/${safeLang}/${safeUser}/${timestamp}.${ext}`
 
   const { url, fields } = await createPresignedPost(getS3(), {
-    Bucket:     S3_BUCKET,
-    Key:        s3Key,
-    Expires:    300, // 5 minutes
+    Bucket: S3_BUCKET,
+    Key: s3Key,
+    Expires: 300, // 5 minutes
     Conditions: [
       // Enforce 10 MB max — S3 rejects any upload exceeding this
       ['content-length-range', 0, MAX_FILE_SIZE],
@@ -116,7 +107,7 @@ export async function getPresignedPost(params: {
 export async function getPresignedDownloadUrl(s3Key: string): Promise<string> {
   const command = new GetObjectCommand({
     Bucket: S3_BUCKET,
-    Key:    s3Key,
+    Key: s3Key,
   })
 
   return await getSignedUrl(getS3(), command, { expiresIn: 3600 })

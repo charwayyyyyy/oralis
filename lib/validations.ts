@@ -36,7 +36,10 @@ export const UploadUrlSchema = z.object({
   contentType:  z
     .string()
     .refine(
-      (v) => ALLOWED_AUDIO_TYPES.includes(v.toLowerCase() as typeof ALLOWED_AUDIO_TYPES[number]),
+      (v) => {
+        const baseType = v.split(';')[0].trim().toLowerCase()
+        return ALLOWED_AUDIO_TYPES.includes(baseType as typeof ALLOWED_AUDIO_TYPES[number])
+      },
       { message: 'Only audio files are allowed (MP3, WAV, FLAC, M4A, OGG, WebM)' },
     ),
   contributorId: z.string().max(64).optional(),

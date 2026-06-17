@@ -58,11 +58,12 @@ export async function GET(request: Request) {
 
     const contributions = await Promise.all(
       rawContributions.map(async (c) => {
-        if (c.s3Key) {
+        const s3Key = c.audioS3Key || c.s3Key
+        if (s3Key) {
           try {
-            c.audioUrl = await getPresignedDownloadUrl(c.s3Key)
+            c.audioUrl = await getPresignedDownloadUrl(s3Key as string)
           } catch (err) {
-            console.error('[API /language/full] Failed to sign URL for', c.s3Key, err)
+            console.error('[API /language/full] Failed to sign URL for', s3Key, err)
           }
         }
         return c

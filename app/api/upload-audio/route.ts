@@ -55,12 +55,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'languageId is required' }, { status: 400 })
   }
 
-  const mimeType = audioBlob.type || 'audio/webm'
-  console.info(`[API /upload-audio] Processing audio upload`, { languageId, phraseIndex, mimeType, size: audioBlob.size })
+  const fullMimeType = audioBlob.type || 'audio/webm'
+  const mimeType = fullMimeType.split(';')[0].trim()
+  console.info(`[API /upload-audio] Processing audio upload`, { languageId, phraseIndex, mimeType, fullMimeType, size: audioBlob.size })
 
   if (!ALLOWED_MIME.has(mimeType)) {
-    console.warn(`[API /upload-audio] Validation failed: unsupported MIME type "${mimeType}"`)
-    return NextResponse.json({ error: `Unsupported audio type: ${mimeType}` }, { status: 400 })
+    console.warn(`[API /upload-audio] Validation failed: unsupported MIME type "${fullMimeType}"`)
+    return NextResponse.json({ error: `Unsupported audio type: ${fullMimeType}` }, { status: 400 })
   }
 
   const ext       = MIME_TO_EXT[mimeType] ?? 'webm'

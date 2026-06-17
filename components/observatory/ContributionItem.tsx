@@ -36,12 +36,12 @@ export default function ContributionItem({ contribution }: ContributionItemProps
           </div>
 
           <h4 className="font-display text-2xl lg:text-3xl font-bold text-navy leading-tight mb-2">
-            "{contribution.text}"
+            "{contribution.text || (contribution as any).title}"
           </h4>
 
-          {contribution.translation && (
-            <p className="font-body text-lg text-stone/80 italic mb-4">
-              {contribution.translation}
+          {(contribution.translation || (contribution as any).body) && (
+            <p className="font-body text-lg text-stone/80 italic mb-4 whitespace-pre-line">
+              {contribution.translation || (contribution as any).body}
             </p>
           )}
 

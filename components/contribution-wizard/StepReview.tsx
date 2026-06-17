@@ -84,50 +84,57 @@ export default function StepReview({ state, onUpdate, onBack }: Props) {
 
   async function handleSubmit() {
     setSubmitting(true)
-    setCurrentStep(0)
-    const allResults: SubmitResult[] = []
+    setCurrentStep(1) // indicate saving started
+    setResults([])
 
-    for (let i = 0; i < validPhrases.length; i++) {
-      setCurrentStep(i + 1)
-      const phrase = validPhrases[i]
-
+    const promises = validPhrases.map(async (phrase) => {
       try {
         const res  = await fetch('/api/contribution/create', {
           method:  'POST',
           headers: { 'Content-Type': 'application/json' },
           body:    JSON.stringify({
-            languageId:    state.languageId,
-            languageName:  state.languageName,
-            text:          phrase.text,
-            translation:   phrase.translation || undefined,
-            audioUrl:      phrase.audioUrl    || undefined,
-            s3Key:         phrase.s3Key       || undefined,
-            context:       phrase.context     || undefined,
-            usage:         phrase.usage       || undefined,
-            prompt:        phrase.prompt,
-            contributorId: 'anonymous',
+            languageId:      state.languageId,
+            languageName:    state.languageName,
+            contentType:     'vocabulary',
+            title:           phrase.text,
+            body:            phrase.translation ? `Translation: ${phrase.translation}\nUsage: ${phrase.usage || ''}\nPrompt: ${phrase.prompt || ''}`.trim() : '',
+            context:         phrase.context || phrase.prompt || 'Vocabulary phrase',
+            source:          '',
+            location:        state.region || '',
+            audioS3Key:      phrase.s3Key || undefined,
+            contributorName: 'anonymous',
           }),
         })
         const data = await res.json()
         if (!res.ok) throw new Error(data.error ?? 'Submission failed')
 
-        allResults.push({ phraseId: phrase.id, contributionId: data.contributionId, success: true })
+        const result: SubmitResult = { phraseId: phrase.id, contributionId: data.contributionId, success: true }
+        setResults((prev) => [...prev, result])
+        return result
       } catch (e) {
-        allResults.push({
+        const result: SubmitResult = {
           phraseId:       phrase.id,
           contributionId: '',
           success:        false,
           error:          e instanceof Error ? e.message : 'Unknown error',
-        })
+        }
+        setResults((prev) => [...prev, result])
+        return result
       }
+    })
 
-      setResults([...allResults])
-    }
+    const allResults = await Promise.all(promises)
 
     const successCount = allResults.filter((r) => r.success).length
     onUpdate({ submitted: successCount >= 3, submitError: successCount === 0 ? 'All submissions failed' : null })
     setSubmitting(false)
     setSubmitted(successCount >= 3)
+    
+    if (successCount >= 3) {
+      setTimeout(() => {
+        window.location.href = '/observatory'
+      }, 3500)
+    }
   }
 
   // ── Success screen ─────────────────────────────────────────────────────
@@ -172,16 +179,10 @@ export default function StepReview({ state, onUpdate, onBack }: Props) {
 
         <div className="flex gap-3 justify-center">
           <a
-            href="/explore"
-            className="px-6 py-3.5 font-ui text-sm glass rounded-xl text-stone hover:text-navy transition-all"
-          >
-            Explore the atlas
-          </a>
-          <a
-            href="/contribute"
+            href="/observatory"
             className="px-6 py-3.5 font-ui text-sm font-medium glass-navy-heavy text-ivory rounded-xl hover:bg-navy transition-all"
           >
-            Contribute more →
+            View in Observatory →
           </a>
         </div>
       </div>
@@ -288,13 +289,22 @@ export default function StepReview({ state, onUpdate, onBack }: Props) {
       </div>
 
       {/* Consent */}
-      <div className="glass rounded-xl px-5 py-4 mb-8">
+      <div className="glass rounded-xl px-5 py-4 mb-6">
         <p className="font-ui text-xs text-stone/60 leading-relaxed">
           By sealing this record, I confirm I have the right to share this content and that
           any speakers have given informed consent for cultural archiving. This contribution
           will be preserved under Creative Commons Attribution 4.0 International.
         </p>
       </div>
+
+      {state.submitError && (
+        <div className="mb-6 p-4 rounded-xl bg-red-50 border border-red-200">
+          <p className="font-ui text-sm font-medium text-red-600 flex items-center gap-2">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+            {state.submitError}
+          </p>
+        </div>
+      )}
 
       <div className="flex gap-3">
         <button onClick={onBack} className="px-6 py-4 font-ui text-sm text-stone hover:text-navy glass rounded-xl transition-all">

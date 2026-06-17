@@ -8,7 +8,7 @@
  * Renders the sidebar step indicator and active step content.
  */
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import StepLanguage from './StepLanguage'
 import StepPrompts  from './StepPrompts'
 import StepAudio    from './StepAudio'
@@ -39,6 +39,39 @@ interface Props {
 export default function WizardContainer({ onClose }: Props) {
   const [step,  setStep]  = useState<WizardStep>(1)
   const [state, setState] = useState<WizardState>(createInitialState)
+  const [isClient, setIsClient] = useState(false)
+
+  useEffect(() => {
+    setIsClient(true)
+    try {
+      const savedState = localStorage.getItem('oralis_wizard_state')
+      const savedStep = localStorage.getItem('oralis_wizard_step')
+      if (savedState) {
+        setState(JSON.parse(savedState))
+      }
+      if (savedStep) {
+        setStep(parseInt(savedStep, 10) as WizardStep)
+      }
+    } catch {}
+  }, [])
+
+  useEffect(() => {
+    if (!isClient) return
+    if (!state.submitted) {
+      localStorage.setItem('oralis_wizard_state', JSON.stringify({
+        ...state,
+        phrases: state.phrases.map(p => ({
+          ...p,
+          audioBlob: undefined,
+          audioUrl: p.s3Key ? p.audioUrl : undefined // keep if it's an s3 url, else it's a blob url
+        }))
+      }))
+      localStorage.setItem('oralis_wizard_step', step.toString())
+    } else {
+      localStorage.removeItem('oralis_wizard_state')
+      localStorage.removeItem('oralis_wizard_step')
+    }
+  }, [state, step, isClient])
 
   const update = useCallback((patch: Partial<WizardState>) => {
     setState((prev) => ({ ...prev, ...patch }))

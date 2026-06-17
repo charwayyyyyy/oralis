@@ -32,13 +32,13 @@ const ibmPlexMono = IBM_Plex_Mono({
 })
 
 export const metadata: Metadata = {
-  title: 'Oralis — A Living Atlas of Human Cultural Memory',
+  title: 'Oralis',
   description:
     'Navigate humanity\'s linguistic heritage. 2,847 endangered languages, 186,200 hours of oral memory. A living cultural atlas built with communities, for all humanity.',
   keywords: ['endangered languages', 'cultural preservation', 'oral traditions', 'indigenous languages', 'linguistic heritage', 'cultural atlas'],
   authors: [{ name: 'Oralis' }],
   openGraph: {
-    title: 'Oralis — A Living Atlas of Human Cultural Memory',
+    title: 'Oralis',
     description: 'Every language carries a world of knowledge.',
     type: 'website',
   },
