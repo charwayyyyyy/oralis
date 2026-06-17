@@ -101,9 +101,9 @@ export default async function ContributionsFeed() {
                           {c.title || c.text || 'New Contribution'}
                         </h3>
 
-                        {c.excerpt && (
+                        {(c.context || c.body || c.excerpt) && (
                           <p className="font-body text-sm text-stone leading-relaxed mb-3 line-clamp-2">
-                            {c.excerpt}
+                            {c.context || c.body || c.excerpt}
                           </p>
                         )}
 
