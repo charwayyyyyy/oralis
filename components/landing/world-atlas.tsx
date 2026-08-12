@@ -111,15 +111,16 @@ export default function WorldAtlas() {
           <Link
             key={lang.id}
             href={`/language/${lang.id}`}
-            className="absolute -translate-x-1/2 -translate-y-1/2 group z-10"
+            className="absolute -translate-x-1/2 -translate-y-1/2 group z-10 p-2.5 sm:p-2 focus-ring rounded-full"
             style={{ left: `${x}%`, top: `${y}%` }}
             onMouseEnter={() => setHovered(lang.id)}
             onMouseLeave={() => setHovered(null)}
+            onTouchStart={() => setHovered(lang.id === hovered ? null : lang.id)}
             aria-label={`${lang.name} — ${lang.country}`}
           >
             {/* Vitality glow ring */}
             <span
-              className="absolute inset-0 -m-4 rounded-full transition-all duration-700"
+              className="absolute inset-0 -m-3 rounded-full transition-all duration-700 pointer-events-none"
               style={{
                 backgroundColor: 'transparent',
                 boxShadow: isPulsing || isHov

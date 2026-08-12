@@ -1,4 +1,13 @@
+import type { Metadata } from 'next'
 import UserProfile from '@/components/profile/user-profile'
+
+export const metadata: Metadata = {
+  title: 'Manage Your Contribution Tokens',
+  description: 'Look up and permanently manage or delete your language contributions on Oralis using your one-time cryptographic delete token.',
+  alternates: {
+    canonical: '/profile',
+  },
+}
 
 export default function ProfilePage() {
   return (

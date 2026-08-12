@@ -142,6 +142,18 @@ export default function AudioPlayer({ title, duration = '0:30', contributor, dat
     }
   }
 
+  const handleTouchScrub = (e: React.TouchEvent<HTMLDivElement>) => {
+    const touch = e.touches[0]
+    if (!touch) return
+    const rect = e.currentTarget.getBoundingClientRect()
+    const pct = Math.max(0, Math.min(1, (touch.clientX - rect.left) / rect.width))
+    const targetTime = pct * effectiveDuration
+    setCurrentTime(targetTime)
+    if (audioRef.current) {
+      audioRef.current.currentTime = targetTime
+    }
+  }
+
   return (
     <div className="glass-heavy rounded-xl p-5 hover:shadow-lg transition-all duration-300 group border border-border/30">
       <div className="flex items-start justify-between gap-4 mb-4">
@@ -197,8 +209,10 @@ export default function AudioPlayer({ title, duration = '0:30', contributor, dat
 
           {/* Interactive waveform visualizer */}
           <div
-            className="flex-1 flex items-end gap-1 h-10 cursor-pointer py-1"
+            className="flex-1 flex items-end gap-1 h-10 cursor-pointer py-1 touch-none"
             onClick={handleScrub}
+            onTouchStart={handleTouchScrub}
+            onTouchMove={handleTouchScrub}
             aria-hidden="true"
           >
             {DETERMINISTIC_BARS.map((height, i) => {
@@ -226,8 +240,10 @@ export default function AudioPlayer({ title, duration = '0:30', contributor, dat
 
       {/* Progress track */}
       <div
-        className="h-1.5 bg-border/30 rounded-full overflow-hidden cursor-pointer touch-target-min flex items-center"
+        className="h-1.5 bg-border/30 rounded-full overflow-hidden cursor-pointer touch-target-min flex items-center touch-none"
         onClick={handleScrub}
+        onTouchStart={handleTouchScrub}
+        onTouchMove={handleTouchScrub}
         role="progressbar"
         aria-valuenow={Math.round(progressPercent)}
         aria-valuemin={0}

@@ -122,23 +122,50 @@
   --vitality-warmth: 0.5;
   --vitality-glow-intensity: 0.15;
   --vitality-pulse-speed: 3s;
+
+  /* Safe Area Insets for Mobile / PWA */
+  --sat: env(safe-area-inset-top, 0px);
+  --sab: env(safe-area-inset-bottom, 0px);
+  --sal: env(safe-area-inset-left, 0px);
+  --sar: env(safe-area-inset-right, 0px);
 }
 
 @layer base {
   * {
     @apply border-border outline-ring/50;
+    -webkit-tap-highlight-color: transparent;
   }
   html {
     background-color: #0A1230;
     scroll-behavior: smooth;
+    overflow-x: clip;
+    max-width: 100vw;
   }
   body {
     @apply bg-background text-foreground font-sans antialiased;
     font-feature-settings: 'kern' 1, 'liga' 1;
+    overflow-x: clip;
+    max-width: 100vw;
+    -webkit-overflow-scrolling: touch;
   }
   h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-playfair), 'Georgia', serif;
     font-feature-settings: 'kern' 1, 'liga' 1;
+  }
+
+  /* Prevent Safari on iOS from auto-zooming on focus when font-size < 16px */
+  @media screen and (max-width: 768px) {
+    input[type="text"],
+    input[type="search"],
+    input[type="email"],
+    input[type="url"],
+    input[type="password"],
+    input[type="number"],
+    input[type="tel"],
+    select,
+    textarea {
+      font-size: 16px !important;
+    }
   }
 }
 
@@ -517,6 +544,32 @@
   .touch-target-min {
     min-height: 44px;
     min-width: 44px;
+  }
+
+  /* ─── Mobile Safe Area Utilities ────────────── */
+  .pt-safe {
+    padding-top: max(1rem, var(--sat));
+  }
+  .pb-safe {
+    padding-bottom: max(1.5rem, var(--sab));
+  }
+  .pl-safe {
+    padding-left: max(1rem, var(--sal));
+  }
+  .pr-safe {
+    padding-right: max(1rem, var(--sar));
+  }
+  .min-h-screen-safe {
+    min-height: calc(100svh - var(--sat) - var(--sab));
+  }
+
+  /* ─── No Scrollbar Utility ──────────────────── */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
   }
 }
 

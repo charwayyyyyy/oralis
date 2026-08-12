@@ -184,19 +184,32 @@ export default function Navigation() {
               href={link.href}
               aria-current={pathname === link.href ? 'page' : undefined}
               className={cn(
-                'font-display text-4xl font-bold tracking-tight transition-all py-3 min-h-[44px] flex flex-col focus-ring rounded-lg px-2 -ml-2',
-                pathname === link.href ? 'text-gold' : 'text-ivory/80 hover:text-ivory'
+                'font-display text-3xl sm:text-4xl font-bold tracking-tight transition-all py-2 min-h-[44px] flex flex-col focus-ring rounded-lg px-2 -ml-2',
+                pathname === link.href ? 'text-gold' : 'text-ivory/85 hover:text-ivory'
               )}
               style={{ transitionDelay: menuOpen ? `${i * 60}ms` : '0ms' }}
             >
               <span>{link.label}</span>
-              <span className="font-ui text-xs font-normal tracking-widest uppercase text-ivory/40 mt-1">
+              <span className="font-ui text-xs font-normal tracking-widest uppercase text-ivory/40 mt-0.5">
                 {link.depth}
               </span>
             </Link>
           ))}
+
+          {/* Secondary mobile links */}
+          <div className="pt-2 flex flex-wrap gap-4 border-t border-ivory/10">
+            <Link href="/profile" className="font-ui text-xs text-ivory/50 hover:text-gold py-2 min-h-[44px] flex items-center">
+              Manage Token
+            </Link>
+            <Link href="/guidelines" className="font-ui text-xs text-ivory/50 hover:text-gold py-2 min-h-[44px] flex items-center">
+              Guidelines
+            </Link>
+            <Link href="/terms" className="font-ui text-xs text-ivory/50 hover:text-gold py-2 min-h-[44px] flex items-center">
+              Terms & Privacy
+            </Link>
+          </div>
           
-          <div className="pt-8">
+          <div className="pt-4">
             <Link
               href="/contribute"
               className="font-ui text-base px-8 py-4 bg-gold text-navy tracking-wide inline-block w-full text-center font-bold rounded-xl shadow-lg hover:bg-gold-warm transition-colors min-h-[44px] focus-ring"
@@ -205,8 +218,8 @@ export default function Navigation() {
             </Link>
           </div>
         </div>
-        <div className="px-10 pb-10 pt-6 mt-auto">
-          <div className="border-t border-ivory/20 pt-6 flex items-center gap-4">
+        <div className="px-10 pb-safe pt-4 mt-auto">
+          <div className="border-t border-ivory/20 pt-4 flex items-center gap-4">
             <span className="relative grid place-items-center h-12 w-16 rounded-lg overflow-hidden bg-ivory border border-gold/40 shadow-sm">
               <span
                 aria-hidden="true"
@@ -218,7 +231,10 @@ export default function Navigation() {
                 }}
               />
             </span>
-            <span className="font-display text-xl font-bold text-ivory/90">Oralis</span>
+            <div className="flex flex-col">
+              <span className="font-display text-xl font-bold text-ivory/90">Oralis</span>
+              <span className="font-ui text-[10px] text-ivory/40 tracking-widest uppercase">Every language carries a world</span>
+            </div>
           </div>
         </div>
       </div>

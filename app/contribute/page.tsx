@@ -1,4 +1,13 @@
+import type { Metadata } from 'next'
 import ContributionStudio from '@/components/contribute/contribution-studio'
+
+export const metadata: Metadata = {
+  title: 'Contribute a Language Memory — Preservation Studio',
+  description: 'Preserve an endangered language in your own voice. Record vocabulary, stories, and cultural context directly into the permanent Oralis cultural atlas.',
+  alternates: {
+    canonical: '/contribute',
+  },
+}
 
 export default function ContributePage() {
   return (

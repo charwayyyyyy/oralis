@@ -8,10 +8,20 @@
  * The interactive filter/map UI lives in ExploreClient (client component).
  */
 
+import type { Metadata } from 'next'
 import ExploreClient from '@/components/explore/explore-client'
 import { getAllLanguages } from '@/lib/services/languages'
 import { LANGUAGES }      from '@/lib/data'
 import type { Language }  from '@/lib/data'
+
+export const metadata: Metadata = {
+  title: 'Explore Endangered Languages & Living Cultural Atlas',
+  description: 'Navigate humanity\'s linguistic heritage. Search endangered languages by continent, vitality status, and speaker counts on the interactive Oralis world atlas.',
+  keywords: ['endangered languages map', 'linguistic atlas', 'indigenous languages', 'language explorer', 'world languages directory'],
+  alternates: {
+    canonical: '/explore',
+  },
+}
 
 // Revalidate every 1 hour — SSG with stale-while-revalidate
 export const revalidate = 3600

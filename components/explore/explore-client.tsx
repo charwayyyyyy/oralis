@@ -325,13 +325,13 @@ export default function ExploreClient({ languages }: Props) {
               )}
             </div>
 
-            {/* Continent Segment Buttons */}
-            <div className="hidden lg:flex items-center gap-1 bg-muted/60 p-1 rounded-xl border border-border/40">
+            {/* Continent Segment Buttons — Swipeable on mobile */}
+            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar p-1 rounded-xl bg-muted/60 border border-border/40 max-w-full">
               {CONTINENTS.map((c) => (
                 <button
                   key={c}
                   onClick={() => setContinent(c)}
-                  className={`font-ui text-xs px-3 py-2 rounded-lg transition-all min-h-[36px] ${
+                  className={`font-ui text-xs px-3.5 py-2 rounded-lg transition-all min-h-[36px] whitespace-nowrap shrink-0 ${
                     continent === c 
                       ? 'bg-navy text-ivory font-bold shadow-sm' 
                       : 'text-stone hover:text-navy font-medium'
