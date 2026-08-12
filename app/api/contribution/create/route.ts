@@ -27,7 +27,7 @@ import { ContributionCreateSchema } from '@/lib/validations'
 export const runtime = 'nodejs'
 
 function nanoid(len = 8): string {
-  return Math.random().toString(36).slice(2, 2 + len).padEnd(len, '0')
+  return crypto.randomUUID().replace(/-/g, '').slice(0, len)
 }
 
 export async function POST(req: NextRequest) {

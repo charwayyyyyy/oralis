@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { cn } from '@/lib/utils'
 import { LANGUAGES } from '@/lib/data'
 
@@ -28,11 +28,35 @@ function getAtlasDepth(pathname: string) {
 export default function Navigation() {
   const pathname   = usePathname()
   const [menuOpen, setMenuOpen] = useState(false)
+  const triggerRef = useRef<HTMLButtonElement>(null)
+  const menuRef    = useRef<HTMLDivElement>(null)
 
   const isHome = pathname === '/'
   const depth = getAtlasDepth(pathname)
 
-  useEffect(() => { setMenuOpen(false) }, [pathname])
+  useEffect(() => { 
+    setMenuOpen(false) 
+  }, [pathname])
+
+  // Body scroll lock and Escape key listener
+  useEffect(() => {
+    if (menuOpen) {
+      document.body.style.overflow = 'hidden'
+      const handleKeyDown = (e: KeyboardEvent) => {
+        if (e.key === 'Escape') {
+          setMenuOpen(false)
+          triggerRef.current?.focus()
+        }
+      }
+      window.addEventListener('keydown', handleKeyDown)
+      return () => {
+        document.body.style.overflow = ''
+        window.removeEventListener('keydown', handleKeyDown)
+      }
+    } else {
+      document.body.style.overflow = ''
+    }
+  }, [menuOpen])
 
   return (
     <>
@@ -117,6 +141,7 @@ export default function Navigation() {
 
           {/* Mobile hamburger */}
           <button
+            ref={triggerRef}
             className="md:hidden flex flex-col gap-1.5 p-3 focus-ring rounded-md min-h-[44px] min-w-[44px] justify-center items-center"
             onClick={() => setMenuOpen(!menuOpen)}
             aria-label={menuOpen ? 'Close menu' : 'Open menu'}
@@ -139,6 +164,7 @@ export default function Navigation() {
 
       {/* Mobile overlay — glassmorphism */}
       <div
+        ref={menuRef}
         className={cn(
           'fixed inset-0 z-40 glass-navy-heavy flex flex-col transition-transform duration-500 md:hidden',
           menuOpen ? 'translate-x-0' : 'translate-x-full'

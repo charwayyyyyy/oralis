@@ -1,4 +1,4 @@
-import { ContributionCreateSchema } from './lib/validations'
+import { ContributionCreateSchema } from '../lib/validations'
 
 const raw = {
   languageId: 'akan',

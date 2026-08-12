@@ -9,7 +9,7 @@
  * Uploads audio to /api/upload-audio on completion.
  */
 
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import type { WizardState, PhraseEntry } from './types'
 
 interface Props {
@@ -38,16 +38,33 @@ function AudioRecorder({
   const [error,      setError]      = useState<string | null>(null)
   const [duration,   setDuration]   = useState(0)
 
+  const streamRef   = useRef<MediaStream | null>(null)
   const mediaRef    = useRef<MediaRecorder | null>(null)
   const chunksRef   = useRef<BlobEvent['data'][]>([])
   const timerRef    = useRef<ReturnType<typeof setInterval> | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // Revoke object URL on unmount or reset
+  useEffect(() => {
+    return () => {
+      if (audioUrl) {
+        URL.revokeObjectURL(audioUrl)
+      }
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((t) => t.stop())
+      }
+      if (timerRef.current) {
+        clearInterval(timerRef.current)
+      }
+    }
+  }, [audioUrl])
 
   // ── Start recording ─────────────────────────────────────────────────────
   const startRecording = useCallback(async () => {
     setError(null)
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      streamRef.current = stream
       const mr     = new MediaRecorder(stream, { mimeType: 'audio/webm' })
       chunksRef.current = []
 
@@ -62,6 +79,7 @@ function AudioRecorder({
         setLocalUrl(url)
         setRecState('recorded')
         stream.getTracks().forEach((t) => t.stop())
+        streamRef.current = null
       }
 
       mr.start()
@@ -106,11 +124,12 @@ function AudioRecorder({
   const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
+    if (audioUrl) URL.revokeObjectURL(audioUrl)
     const url = URL.createObjectURL(file)
     setAudioBlob(file)
     setLocalUrl(url)
     setRecState('recorded')
-  }, [])
+  }, [audioUrl])
 
   const fmt = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
 

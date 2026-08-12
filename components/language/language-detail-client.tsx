@@ -82,7 +82,7 @@ export default function LanguageDetailClient({ lang }: { lang: Language }) {
   const warmth = getVitalityWarmth(lang.vitalityScore)
 
   return (
-    <main className="min-h-screen bg-background pt-[72px]">
+    <div className="min-h-screen bg-background pt-[72px]">
       {/* ─── Territory banner ─────────────────────── */}
       <div
         className="relative text-ivory overflow-hidden"
@@ -454,6 +454,6 @@ export default function LanguageDetailClient({ lang }: { lang: Language }) {
           </div>
         )}
       </div>
-    </main>
+    </div>
   )
 }

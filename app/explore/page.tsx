@@ -28,10 +28,8 @@ export default async function ExplorePage() {
   }
 
   return (
-    <>
-<main className="min-h-screen bg-background pt-[72px]">
-        <ExploreClient languages={languages} />
-      </main>
-</>
+    <div className="min-h-screen bg-background pt-[72px]">
+      <ExploreClient languages={languages} />
+    </div>
   )
 }

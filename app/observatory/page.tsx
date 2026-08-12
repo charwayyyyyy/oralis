@@ -108,61 +108,72 @@ export default function ObservatoryPage() {
   )
 
   return (
-    <div className="min-h-screen bg-sand pt-32 pb-24">
-      <div className="max-w-7xl mx-auto px-6 lg:px-12">
+    <div className="min-h-screen bg-sand pt-28 pb-24 relative overflow-hidden">
+      {/* Editorial background text */}
+      <span
+        className="editorial-bg-text top-12 right-6 text-[16vw] opacity-15 select-none"
+        aria-hidden="true"
+      >
+        ORALIS
+      </span>
+
+      <div className="max-w-7xl mx-auto px-6 lg:px-12 relative z-10">
 
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-8 mb-12">
           <div className="max-w-2xl">
-            <span className="font-ui text-xs font-bold tracking-[0.3em] uppercase text-gold/80 mb-4 block">
+            <span className="font-ui text-xs font-bold tracking-[0.3em] uppercase text-gold mb-4 block">
               Global Observatory
             </span>
-            <h1 className="font-display text-5xl lg:text-6xl font-bold text-navy leading-tight mb-6">
+            <h1 className="font-display text-4xl sm:text-5xl lg:text-6xl font-bold text-navy leading-tight mb-6">
               Atlas of Memories.
             </h1>
-            <p className="font-body text-lg text-stone/80 leading-relaxed">
+            <p className="font-body text-base sm:text-lg text-stone/80 leading-relaxed">
               Explore the living archive of human culture. Every card represents a language, and inside, the voices, stories, and context preserved by its community.
             </p>
           </div>
 
           {activeTab === 'atlas' && (
-            <div className="w-full md:w-72 shrink-0">
+            <div className="w-full md:w-80 shrink-0">
               <div className="relative">
                 <input
-                  type="text"
-                  placeholder="Search languages or regions..."
+                  type="search"
+                  placeholder="Search active archives…"
+                  aria-label="Search active language archives"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 bg-white/50 backdrop-blur-sm border border-border/20 rounded-xl font-ui text-sm text-navy placeholder:text-stone/40 focus:outline-none focus:ring-2 focus:ring-gold/30 transition-all"
+                  className="w-full pl-10 pr-4 py-3 bg-white/70 backdrop-blur-md border border-border/40 rounded-xl font-ui text-sm text-navy placeholder:text-stone/40 focus:outline-none focus:ring-2 focus:ring-gold transition-all min-h-[44px]"
                 />
-                <svg className="absolute left-4 top-3.5 text-stone/40" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <svg className="absolute left-3.5 top-3.5 text-stone/40 pointer-events-none" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <circle cx="11" cy="11" r="8"></circle>
                   <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                 </svg>
               </div>
-              <p className="font-ui text-[10px] uppercase tracking-widest text-stone/40 mt-3 text-right">
-                {languages.length} Languages Active
+              <p className="font-ui text-[11px] uppercase tracking-wider text-stone/50 mt-2 text-right">
+                {languages.length} Living Archives
               </p>
             </div>
           )}
         </div>
 
-        {/* Tab switcher */}
-        <div className="flex items-center gap-1 mb-10 glass rounded-xl p-1 w-fit">
+        {/* Tactile Tab switcher */}
+        <div className="ios-segment-group mb-10" role="tablist">
           {([
             { id: 'atlas', label: 'Language Atlas',    icon: '◈' },
             { id: 'feed',  label: 'Chronological Feed', icon: '◉' },
           ] as { id: Tab; label: string; icon: string }[]).map((tab) => (
             <button
               key={tab.id}
+              role="tab"
+              aria-selected={activeTab === tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`font-ui text-sm px-5 py-2.5 rounded-lg transition-all ${
+              className={`ios-segment-btn ${
                 activeTab === tab.id
-                  ? 'glass-navy-heavy text-ivory shadow-md'
-                  : 'text-stone hover:text-navy'
+                  ? 'ios-segment-btn-active'
+                  : ''
               }`}
             >
-              <span className="mr-2 opacity-60">{tab.icon}</span>
+              <span className="mr-2 opacity-60" aria-hidden="true">{tab.icon}</span>
               {tab.label}
             </button>
           ))}

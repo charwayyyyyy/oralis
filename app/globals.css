@@ -410,4 +410,138 @@
     background-size: 200% 100%;
     animation: shimmer 3s ease-in-out infinite;
   }
+
+  /* ─── Voice Portal / Inverted Mask System ────── */
+  .voice-portal-frame {
+    position: relative;
+    overflow: hidden;
+    border-radius: 1.5rem;
+    border: 1px solid rgba(200, 169, 107, 0.28);
+    box-shadow:
+      0 20px 60px -15px rgba(10, 18, 48, 0.7),
+      inset 0 1px 0 rgba(200, 169, 107, 0.2);
+  }
+
+  .voice-portal-outer {
+    filter: saturate(0.6) blur(1.5px);
+    opacity: 0.45;
+    transition: filter 0.8s ease, opacity 0.8s ease;
+  }
+
+  .voice-portal-portal {
+    position: absolute;
+    inset: 12% 16%;
+    border-radius: 9999px;
+    box-shadow:
+      0 0 0 1px rgba(200, 169, 107, 0.45),
+      0 0 40px 10px rgba(200, 169, 107, 0.18),
+      inset 0 0 30px rgba(200, 169, 107, 0.2);
+    overflow: hidden;
+    backdrop-filter: saturate(1.8) contrast(1.1);
+  }
+
+  /* ─── Editorial Text Behind Objects ──────────── */
+  .editorial-bg-text {
+    position: absolute;
+    font-family: var(--font-playfair), 'Georgia', serif;
+    font-weight: 900;
+    line-height: 0.85;
+    letter-spacing: -0.04em;
+    user-select: none;
+    pointer-events: none;
+    color: rgba(200, 169, 107, 0.045);
+    z-index: 0;
+    text-transform: uppercase;
+  }
+
+  .editorial-bg-text-light {
+    position: absolute;
+    font-family: var(--font-playfair), 'Georgia', serif;
+    font-weight: 900;
+    line-height: 0.85;
+    letter-spacing: -0.04em;
+    user-select: none;
+    pointer-events: none;
+    color: rgba(27, 42, 94, 0.035);
+    z-index: 0;
+    text-transform: uppercase;
+  }
+
+  /* ─── iOS-Core Functional Surfaces ────────────── */
+  .ios-capsule {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.35rem 0.85rem;
+    border-radius: 9999px;
+    font-family: var(--font-inter), sans-serif;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(221, 216, 206, 0.5);
+  }
+
+  .ios-segment-group {
+    display: inline-flex;
+    padding: 0.25rem;
+    border-radius: 0.85rem;
+    background: rgba(237, 233, 225, 0.65);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(221, 216, 206, 0.6);
+  }
+
+  .ios-segment-btn {
+    min-height: 44px;
+    min-width: 44px;
+    padding: 0.5rem 1.1rem;
+    border-radius: 0.65rem;
+    font-family: var(--font-inter), sans-serif;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: #6B5F50;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .ios-segment-btn:hover {
+    color: #1A1814;
+  }
+
+  .ios-segment-btn-active {
+    background: #FDFBF7;
+    color: #1B2A5E;
+    box-shadow: 0 2px 8px rgba(27, 42, 94, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
+  }
+
+  .touch-target-min {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
+/* ─── Reduced Motion Overrides ─────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .animate-atlas-breathe,
+  .animate-pulse-vital,
+  .animate-glow-breathe,
+  .animate-drift-slow,
+  .animate-fade-up,
+  .animate-fade-up-slow,
+  .animate-seal-stamp,
+  .animate-page-enter,
+  .map-dot-pulse,
+  .vitality-breathe,
+  .shimmer {
+    animation: none !important;
+  }
 }

@@ -1,18 +1,24 @@
 import Link from 'next/link'
-import { VITALITY_STATUS_LABELS, VITALITY_STATUS_COLORS, formatSpeakers } from '@/lib/data'
+import { LANGUAGES, VITALITY_STATUS_LABELS, VITALITY_STATUS_COLORS, formatSpeakers, type Language } from '@/lib/data'
 import { getAllLanguages } from '@/lib/services/languages'
 
 export default async function FeaturedLanguages() {
-  const allLanguages = await getAllLanguages()
-  
-  // Only feature languages that have actual real-world contributions in DynamoDB
-  const featured = allLanguages
+  let allLanguages: Language[] = []
+  try {
+    allLanguages = await getAllLanguages()
+  } catch (err) {
+    console.warn('[FeaturedLanguages] Falling back to static data:', err)
+    allLanguages = LANGUAGES
+  }
+
+  // Feature languages with contributions or top priority endangered
+  let featured = allLanguages
     .filter(l => ((l.audioCount || 0) + (l.storiesArchived || 0)) > 0)
     .sort((a, b) => ((b.audioCount || 0) + (b.storiesArchived || 0)) - ((a.audioCount || 0) + (a.storiesArchived || 0)))
     .slice(0, 5)
 
   if (featured.length === 0) {
-    return null // Hide the featured section entirely if nothing is active yet
+    featured = allLanguages.slice(0, 5)
   }
 
   return (

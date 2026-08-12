@@ -38,17 +38,21 @@ export default function Footer() {
             </div>
 
             {/* Atlas links */}
-            <div className="flex flex-wrap items-center gap-6 lg:gap-8">
+            <div className="flex flex-wrap items-center gap-5 lg:gap-7">
               {[
                 { label: 'World View', href: '/' },
                 { label: 'Discover', href: '/explore' },
                 { label: 'Preserve', href: '/contribute' },
                 { label: 'Observatory', href: '/observatory' },
+                { label: 'Manage Token', href: '/profile' },
+                { label: 'Guidelines', href: '/guidelines' },
+                { label: 'Terms', href: '/terms' },
+                { label: 'Privacy', href: '/privacy' },
               ].map((link) => (
                 <Link
                   key={link.href}
                   href={link.href}
-                  className="font-ui text-xs text-ivory/25 hover:text-ivory/60 transition-colors tracking-wide"
+                  className="font-ui text-xs text-ivory/40 hover:text-gold transition-colors tracking-wide"
                 >
                   {link.label}
                 </Link>

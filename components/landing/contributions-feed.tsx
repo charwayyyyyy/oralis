@@ -9,10 +9,27 @@ const TYPE_LABELS: Record<string, string> = {
   'cultural-context': 'Cultural Context',
 }
 
+interface FeedContribution {
+  id: string
+  type: string
+  languageId: string
+  languageName: string
+  verified?: boolean
+  title?: string
+  text?: string
+  context?: string
+  body?: string
+  excerpt?: string
+  contributorId?: string
+  contributorName?: string
+  location?: string
+  createdAt: string
+}
+
 export default async function ContributionsFeed() {
   const db = getDb()
   
-  let recentContributions = []
+  let recentContributions: FeedContribution[] = []
   try {
     const result = await db.send(new QueryCommand({
       TableName: TABLE_NAME,
@@ -24,7 +41,7 @@ export default async function ContributionsFeed() {
       ScanIndexForward: false,
       Limit: 5,
     }))
-    recentContributions = result.Items || []
+    recentContributions = (result.Items as FeedContribution[]) || []
   } catch (err) {
     console.error('Failed to fetch recent contributions for feed', err)
   }
@@ -70,7 +87,7 @@ export default async function ContributionsFeed() {
           <div className="lg:col-span-8">
             <div className="divide-y divide-border">
               {recentContributions.length > 0 ? (
-                recentContributions.map((c: any) => (
+                recentContributions.map((c: FeedContribution) => (
                   <article key={c.id} className="py-7 first:pt-0">
                     <div className="flex items-start gap-5">
                       {/* Dot */}
