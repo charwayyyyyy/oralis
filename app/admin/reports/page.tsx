@@ -1,36 +1,27 @@
 'use client'
 
-import React, { useState, useEffect, useContext } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
-import {
-  Flag,
-  CheckCircle2,
-  XCircle,
-  EyeOff,
-  Trash2,
-  Check,
-  AlertTriangle,
-  ExternalLink,
-  ShieldAlert,
-} from 'lucide-react'
-import { AdminContext } from '@/components/admin/admin-layout-client'
+import { Flag, CheckCircle2, XCircle, Trash2, Check, AlertTriangle, ShieldAlert } from 'lucide-react'
+import { useAdmin } from '@/components/admin/admin-layout-client'
+import { useAdminToast } from '@/components/admin/toast-context'
+import AdminStatusBadge from '@/components/admin/admin-status-badge'
+import AdminEmptyState from '@/components/admin/admin-empty-state'
+import AdminConfirmationDialog from '@/components/admin/admin-confirmation-dialog'
 import type { ContentReport } from '@/lib/data'
 
 export default function AdminReportsPage() {
-  const { refreshKey, triggerRefresh } = useContext(AdminContext)
+  const { refreshKey, triggerRefresh } = useAdmin()
+  const { showToast } = useAdminToast()
+
   const [reports, setReports] = useState<ContentReport[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [statusFilter, setStatusFilter] = useState<string>('OPEN')
   const [actionLoading, setActionLoading] = useState(false)
-  const [toastMessage, setToastMessage] = useState<string | null>(null)
+  const [resolvingReport, setResolvingReport] = useState<{ report: ContentReport; resolution: string } | null>(null)
 
-  const showToast = (msg: string) => {
-    setToastMessage(msg)
-    setTimeout(() => setToastMessage(null), 4000)
-  }
-
-  const fetchReports = async () => {
+  const fetchReports = useCallback(async () => {
     setLoading(true)
     setError(null)
     try {
@@ -43,179 +34,126 @@ export default function AdminReportsPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [statusFilter])
 
   useEffect(() => {
     fetchReports()
-  }, [statusFilter, refreshKey])
+  }, [fetchReports, refreshKey])
 
-  const handleResolveReport = async (
-    reportId: string,
-    action: 'RESOLVE_AND_HIDE' | 'RESOLVE_AND_DELETE' | 'DISMISS',
-    notes = ''
-  ) => {
-    setActionLoading(true)
+  const handleResolve = async (id: string, resolution: 'RESOLVED' | 'DISMISSED', notes?: string) => {
     try {
-      const res = await fetch(`/api/admin/reports/${reportId}`, {
+      setActionLoading(true)
+      const res = await fetch(`/api/admin/reports/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action, notes }),
+        body: JSON.stringify({ status: resolution, notes }),
       })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Failed to update report')
-      showToast(`Report ${reportId} processed with ${action}.`)
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error || 'Failed to update report')
+      showToast(`Report marked as ${resolution.toLowerCase()}`, 'success')
+      setResolvingReport(null)
       triggerRefresh()
     } catch (err: any) {
-      alert(err.message || 'Action failed')
+      showToast(err.message || 'Failed to update report', 'error')
     } finally {
       setActionLoading(false)
     }
   }
 
   return (
-    <div className="space-y-6">
-      {/* Toast */}
-      {toastMessage && (
-        <div className="fixed top-20 right-6 z-50 bg-navy text-ivory px-5 py-3 rounded-2xl shadow-xl border border-gold/40 flex items-center gap-3 animate-fadeIn text-xs font-ui font-medium">
-          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-          <span>{toastMessage}</span>
-        </div>
-      )}
-
+    <div className="space-y-6 font-body">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-stone/20 pb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-stone-200/60">
         <div>
-          <span className="text-[11px] font-ui font-semibold text-gold uppercase tracking-[0.2em] block mb-1">
-            Community Integrity
+          <span className="font-ui text-[10px] tracking-widest uppercase font-semibold text-stone-600 block">
+            Trust & Safety
           </span>
-          <h1 className="font-display text-3xl font-bold text-navy tracking-tight">
-            User Reports Queue
-          </h1>
-          <p className="text-xs font-ui text-stone-500 mt-1">
-            Review community flags regarding misinformation, offensive audio, copyright, or missing consent.
+          <h2 className="font-display font-bold text-2xl text-navy tracking-tight mt-0.5">Community Reports</h2>
+          <p className="text-xs font-ui text-stone-500 mt-0.5">
+            Review community flagged inaccuracies, offensive content, or copyright concerns.
           </p>
         </div>
       </div>
 
-      {/* Status Segmented Tabs */}
-      <div className="flex flex-wrap items-center gap-2 border-b border-stone/20 pb-4">
-        {(['OPEN', 'RESOLVED', 'DISMISSED', 'ALL'] as const).map((tab) => (
+      {/* Filter Tabs */}
+      <div className="flex items-center gap-2">
+        {['OPEN', 'RESOLVED', 'DISMISSED', 'ALL'].map((st) => (
           <button
-            key={tab}
-            onClick={() => setStatusFilter(tab)}
-            className={`px-4 py-2 rounded-xl text-xs font-ui font-bold transition-all ${
-              statusFilter === tab
-                ? 'bg-navy text-ivory shadow-sm'
-                : 'bg-white border border-stone/20 text-stone-600 hover:bg-stone-50 hover:text-navy'
+            key={st}
+            onClick={() => setStatusFilter(st)}
+            className={`px-4 py-2 rounded-xl text-xs font-ui font-semibold transition-all ${
+              statusFilter === st
+                ? 'bg-navy text-gold shadow-sm'
+                : 'bg-white border border-stone-200 text-stone-600 hover:bg-stone-50'
             }`}
           >
-            {tab.charAt(0) + tab.slice(1).toLowerCase()}
+            {st === 'ALL' ? 'All Reports' : st.charAt(0) + st.slice(1).toLowerCase()}
           </button>
         ))}
       </div>
 
       {/* Reports List */}
-      <div className="space-y-4">
-        {loading ? (
-          <div className="p-12 text-center text-xs font-ui text-stone-400 bg-white border border-stone/20 rounded-3xl animate-pulse">
-            Loading reports...
-          </div>
-        ) : error ? (
-          <div className="p-12 text-center text-xs text-rose-600 font-ui bg-white border border-rose-200 rounded-3xl">
-            {error}
-          </div>
-        ) : reports.length === 0 ? (
-          <div className="p-16 text-center text-stone-400 text-xs font-ui bg-white border border-stone/20 rounded-3xl">
-            <CheckCircle2 className="w-10 h-10 text-emerald-400 mx-auto mb-3" />
-            <p className="font-semibold text-stone-600 text-sm">No reports in this view.</p>
-            <p className="text-stone-400 mt-1">The public archive is in good standing.</p>
-          </div>
-        ) : (
-          reports.map((report) => {
-            const isPending = report.status === 'OPEN'
-            return (
-              <div
-                key={report.id}
-                className="bg-white border border-stone/20 rounded-3xl p-6 shadow-sm hover:shadow-md transition-all"
-              >
-                <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
-                  <div className="space-y-3 flex-1 min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="p-1.5 rounded-lg bg-rose-100 text-rose-700">
-                        <Flag className="w-4 h-4" />
-                      </span>
-                      <span className="font-display font-bold text-base text-navy">
-                        Reason: {report.reason}
-                      </span>
-                      <span
-                        className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                          isPending ? 'bg-amber-100 text-amber-900' : 'bg-stone-100 text-stone-700'
-                        }`}
-                      >
-                        {report.status}
-                      </span>
-                    </div>
-
-                    <div className="text-xs font-ui text-stone-500 flex flex-wrap items-center gap-3">
-                      <span>
-                        Target: <strong className="text-navy">{report.targetTitle || report.targetId}</strong> ({report.targetType})
-                      </span>
-                      <span></span>
-                      <span className="font-mono text-[11px]">
-                        Reported on: {new Date(report.createdAt).toLocaleString()}
-                      </span>
-                    </div>
-
-                    {report.explanation && (
-                      <div className="p-3.5 bg-rose-50/50 border border-rose-100 rounded-2xl text-xs font-body text-rose-900">
-                        <strong className="block text-[10px] uppercase tracking-wider text-rose-700 mb-1">
-                          Reporter Note
-                        </strong>
-                        {report.explanation}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Actions */}
-                  {isPending && (
-                    <div className="flex flex-wrap items-center gap-2 shrink-0 pt-2 lg:pt-0">
-                      <button
-                        onClick={() => handleResolveReport(report.id, 'DISMISS', 'Report reviewed and dismissed as non-violating')}
-                        disabled={actionLoading}
-                        className="px-3 py-2 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-xl text-xs font-ui font-semibold transition-colors"
-                      >
-                        Dismiss
-                      </button>
-
-                      <button
-                        onClick={() => handleResolveReport(report.id, 'RESOLVE_AND_HIDE', 'Report verified; content hidden from public')}
-                        disabled={actionLoading}
-                        className="px-3.5 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-ui font-semibold flex items-center gap-1.5 shadow-sm transition-transform active:scale-95"
-                      >
-                        <EyeOff className="w-3.5 h-3.5" />
-                        <span>Hide Target</span>
-                      </button>
-
-                      <button
-                        onClick={() => {
-                          if (confirm('Permanently delete the reported target contribution and its S3 audio?')) {
-                            handleResolveReport(report.id, 'RESOLVE_AND_DELETE', 'Report verified; content permanently deleted')
-                          }
-                        }}
-                        disabled={actionLoading}
-                        className="px-3.5 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-ui font-semibold flex items-center gap-1.5 shadow-sm transition-transform active:scale-95"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                        <span>Delete Target</span>
-                      </button>
-                    </div>
-                  )}
+      {loading ? (
+        <div className="p-12 text-center text-xs font-ui text-stone-400">Loading reports...</div>
+      ) : reports.length === 0 ? (
+        <AdminEmptyState
+          title="No open reports"
+          description="The platform is healthy. No community concerns are awaiting curator evaluation."
+        />
+      ) : (
+        <div className="space-y-3">
+          {reports.map((report) => (
+            <div
+              key={report.id}
+              className="bg-white p-5 rounded-3xl border border-stone-200/80 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+            >
+              <div className="min-w-0 flex-1 space-y-1">
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold text-sm text-navy">{report.reason || 'Flagged Content'}</span>
+                  <AdminStatusBadge status={report.status} />
+                </div>
+                <p className="text-xs font-ui text-stone-600 leading-relaxed">{report.explanation || 'No additional details provided.'}</p>
+                <div className="text-[11px] font-mono text-stone-400">
+                  Target: {report.targetType} ({report.targetId}) · {new Date(report.createdAt || Date.now()).toLocaleDateString()}
                 </div>
               </div>
-            )
-          })
-        )}
-      </div>
+
+              {report.status === 'OPEN' && (
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    onClick={() => setResolvingReport({ report, resolution: 'DISMISSED' })}
+                    className="px-3 py-1.5 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-xl text-xs font-ui font-semibold"
+                  >
+                    Dismiss
+                  </button>
+                  <button
+                    onClick={() => setResolvingReport({ report, resolution: 'RESOLVED' })}
+                    className="px-4 py-1.5 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-ui font-semibold shadow-sm"
+                  >
+                    Mark Resolved
+                  </button>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Resolution Confirmation */}
+      <AdminConfirmationDialog
+        isOpen={Boolean(resolvingReport)}
+        title={`${resolvingReport?.resolution === 'RESOLVED' ? 'Resolve' : 'Dismiss'} Community Report`}
+        description="Add optional curator notes for the audit trail."
+        confirmLabel="Confirm"
+        requireReason={true}
+        reasonPlaceholder="Curator notes / resolution summary..."
+        isLoading={actionLoading}
+        onConfirm={(notes) => {
+          if (!resolvingReport) return
+          handleResolve(resolvingReport.report.id, resolvingReport.resolution as any, notes)
+        }}
+        onCancel={() => setResolvingReport(null)}
+      />
     </div>
   )
 }

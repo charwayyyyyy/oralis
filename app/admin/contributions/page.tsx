@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, useContext } from 'react'
+import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import {
   Mic,
   Search,
@@ -16,16 +16,20 @@ import {
   Flag,
   FileText,
   Volume2,
-  CheckSquare,
-  Square,
   Filter,
 } from 'lucide-react'
-import { AdminContext } from '@/components/admin/admin-layout-client'
+import { useAdmin } from '@/components/admin/admin-layout-client'
+import { useAdminToast } from '@/components/admin/toast-context'
+import AdminStatusBadge from '@/components/admin/admin-status-badge'
+import AdminEmptyState from '@/components/admin/admin-empty-state'
+import AdminConfirmationDialog from '@/components/admin/admin-confirmation-dialog'
 import AdminAudioPlayer from '@/components/admin/admin-audio-player'
 import type { Contribution } from '@/lib/data'
 
 export default function AdminContributionsPage() {
-  const { refreshKey, triggerRefresh } = useContext(AdminContext)
+  const { refreshKey, triggerRefresh } = useAdmin()
+  const { showToast } = useAdminToast()
+
   const [contributions, setContributions] = useState<Contribution[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -33,538 +37,290 @@ export default function AdminContributionsPage() {
   // Filters
   const [statusFilter, setStatusFilter] = useState<string>('PENDING')
   const [typeFilter, setTypeFilter] = useState<string>('all')
-  const [hasAudioFilter, setHasAudioFilter] = useState<string>('all')
-  const [reportedOnly, setReportedOnly] = useState<boolean>(false)
   const [searchQuery, setSearchQuery] = useState('')
-
-  // Bulk Selection
-  const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set())
 
   // Dialogs
   const [rejectingContrib, setRejectingContrib] = useState<Contribution | null>(null)
-  const [rejectReason, setRejectReason] = useState('')
-
   const [deletingContrib, setDeletingContrib] = useState<Contribution | null>(null)
-  const [deleteConfirmText, setDeleteConfirmText] = useState('')
-
   const [actionLoading, setActionLoading] = useState(false)
-  const [toastMessage, setToastMessage] = useState<string | null>(null)
 
-  const showToast = (msg: string) => {
-    setToastMessage(msg)
-    setTimeout(() => setToastMessage(null), 4000)
-  }
-
-  const fetchContributions = async () => {
+  const fetchContributions = useCallback(async () => {
     setLoading(true)
     setError(null)
     try {
-      const url = new URL('/api/admin/contributions', window.location.origin)
-      url.searchParams.set('status', statusFilter)
-      if (typeFilter !== 'all') url.searchParams.set('type', typeFilter)
-      if (hasAudioFilter !== 'all') url.searchParams.set('hasAudio', hasAudioFilter)
-      if (reportedOnly) url.searchParams.set('reportedOnly', 'true')
-      if (searchQuery.trim()) url.searchParams.set('search', searchQuery.trim())
-
-      const res = await fetch(url.toString(), { cache: 'no-store' })
+      const res = await fetch('/api/admin/contributions', { cache: 'no-store' })
       if (!res.ok) throw new Error('Failed to load contributions')
       const json = await res.json()
-      setContributions(json.items || [])
+      setContributions(json.contributions || [])
     } catch (err: any) {
       setError(err.message || 'Error loading contributions')
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
 
   useEffect(() => {
     fetchContributions()
-    setSelectedKeys(new Set())
-  }, [statusFilter, typeFilter, hasAudioFilter, reportedOnly, searchQuery, refreshKey])
+  }, [fetchContributions, refreshKey])
 
-  // Single Action
-  const handleModerationAction = async (
-    PK: string,
-    SK: string,
+  const handleModerate = async (
+    id: string,
     action: 'APPROVE' | 'REJECT' | 'HIDE' | 'ARCHIVE' | 'RESTORE',
-    reason = ''
+    reason?: string
   ) => {
-    setActionLoading(true)
     try {
-      const res = await fetch(`/api/admin/contributions/${encodeURIComponent(SK)}/moderation`, {
-        method: 'PATCH',
+      setActionLoading(true)
+      const res = await fetch(`/api/admin/contributions/${id}/moderation`, {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ PK, SK, action, reason }),
+        body: JSON.stringify({ action, reason }),
       })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Action failed')
-      showToast(`Contribution state updated to ${action}.`)
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error || 'Moderation failed')
+      showToast(`Contribution ${action.toLowerCase()}d successfully`, 'success')
       setRejectingContrib(null)
       triggerRefresh()
     } catch (err: any) {
-      alert(err.message || 'Action failed')
+      showToast(err.message || 'Action failed', 'error')
     } finally {
       setActionLoading(false)
     }
   }
 
-  // Bulk Approve
-  const handleBulkApprove = async () => {
-    if (selectedKeys.size === 0) return
-    if (!confirm(`Are you sure you want to approve all ${selectedKeys.size} selected contributions?`)) return
-
-    setActionLoading(true)
-    try {
-      for (const itemKey of Array.from(selectedKeys)) {
-        const [pk, sk] = itemKey.split('|||')
-        await fetch(`/api/admin/contributions/${encodeURIComponent(sk)}/moderation`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ PK: pk, SK: sk, action: 'APPROVE', reason: 'Bulk curator approval' }),
-        })
-      }
-      showToast(`Approved ${selectedKeys.size} contribution(s).`)
-      setSelectedKeys(new Set())
-      triggerRefresh()
-    } catch (err: any) {
-      alert(err.message || 'Bulk approval failed')
-    } finally {
-      setActionLoading(false)
-    }
-  }
-
-  // Permanent Delete
-  const handlePermanentDelete = async () => {
+  const handleDeleteConfirm = async () => {
     if (!deletingContrib) return
-    if (deleteConfirmText !== 'DELETE') {
-      alert('Type DELETE to confirm.')
-      return
-    }
-
-    setActionLoading(true)
+    const id = deletingContrib.id || (deletingContrib.SK ? deletingContrib.SK.split('#')[1] : null)
     try {
-      const res = await fetch(`/api/admin/contributions/${encodeURIComponent(deletingContrib.SK || '')}/delete`, {
+      setActionLoading(true)
+      const res = await fetch(`/api/admin/contributions/${id}/delete`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          PK: deletingContrib.PK,
-          SK: deletingContrib.SK,
-          confirmationText: deleteConfirmText,
-          reason: 'Permanent curator deletion',
+          languageId: deletingContrib.languageId || deletingContrib.PK?.replace('LANGUAGE#', ''),
         }),
       })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Failed to delete contribution')
-      showToast('Contribution and associated audio permanently removed from DynamoDB and S3.')
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error || 'Deletion failed')
+      showToast('Contribution permanently deleted', 'success')
       setDeletingContrib(null)
       triggerRefresh()
     } catch (err: any) {
-      alert(err.message || 'Deletion failed')
+      showToast(err.message || 'Deletion failed', 'error')
     } finally {
       setActionLoading(false)
     }
   }
 
-  const toggleSelect = (key: string) => {
-    const next = new Set(selectedKeys)
-    if (next.has(key)) next.delete(key)
-    else next.add(key)
-    setSelectedKeys(next)
-  }
-
-  const toggleSelectAll = () => {
-    if (selectedKeys.size === contributions.length) {
-      setSelectedKeys(new Set())
-    } else {
-      setSelectedKeys(new Set(contributions.map((c) => `${c.PK || `LANGUAGE#${c.languageId}`}|||${c.SK}`)))
-    }
-  }
+  const filtered = useMemo(() => {
+    return contributions.filter((c) => {
+      const modStatus = c.moderationStatus || (c.verified ? 'APPROVED' : 'PENDING')
+      if (statusFilter !== 'ALL' && modStatus !== statusFilter) return false
+      if (typeFilter !== 'all' && c.type !== typeFilter) return false
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase()
+        const matchTitle = (c.title || '').toLowerCase().includes(q)
+        const matchTrans = ((c as any).translation || '').toLowerCase().includes(q)
+        const matchLang = (c.languageName || c.languageId || '').toLowerCase().includes(q)
+        if (!matchTitle && !matchTrans && !matchLang) return false
+      }
+      return true
+    })
+  }, [contributions, statusFilter, typeFilter, searchQuery])
 
   return (
-    <div className="space-y-6">
-      {/* Toast */}
-      {toastMessage && (
-        <div className="fixed top-20 right-6 z-50 bg-navy text-ivory px-5 py-3 rounded-2xl shadow-xl border border-gold/40 flex items-center gap-3 animate-fadeIn text-xs font-ui font-medium">
-          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-          <span>{toastMessage}</span>
-        </div>
-      )}
-
+    <div className="space-y-6 font-body">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-stone/20 pb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-stone-200/60">
         <div>
-          <span className="text-[11px] font-ui font-semibold text-gold uppercase tracking-[0.2em] block mb-1">
-            Media & Text Curation
+          <span className="font-ui text-[10px] tracking-widest uppercase font-semibold text-stone-600 block">
+            Memory Triage
           </span>
-          <h1 className="font-display text-3xl font-bold text-navy tracking-tight">
-            Contribution Review Queue
-          </h1>
-          <p className="text-xs font-ui text-stone-500 mt-1">
-            Listen to submitted native pronunciations, verify cultural context, and moderate memory recordings.
+          <h2 className="font-display font-bold text-2xl text-navy tracking-tight mt-0.5">Contribution Moderation</h2>
+          <p className="text-xs font-ui text-stone-500 mt-0.5">
+            Review community-submitted audio recordings, phrase translations, and cultural context.
           </p>
         </div>
+      </div>
 
-        {selectedKeys.size > 0 && (
-          <div className="flex items-center gap-3 bg-amber-50 border border-amber-200 px-4 py-2 rounded-xl">
-            <span className="text-xs font-ui text-amber-900 font-semibold">
-              {selectedKeys.size} selected
-            </span>
+      {/* Filter Bar */}
+      <div className="bg-white p-4 rounded-2xl border border-stone-200/80 shadow-sm flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between">
+        <div className="flex items-center gap-1 overflow-x-auto pb-1 md:pb-0">
+          {['PENDING', 'APPROVED', 'HIDDEN', 'REJECTED', 'ALL'].map((st) => (
             <button
-              onClick={handleBulkApprove}
-              disabled={actionLoading}
-              className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-ui font-bold flex items-center gap-1 shadow-sm transition-all disabled:opacity-50"
+              key={st}
+              onClick={() => setStatusFilter(st)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-ui font-semibold transition-all shrink-0 ${
+                statusFilter === st
+                  ? 'bg-navy text-gold shadow-sm'
+                  : 'bg-stone-100/70 text-stone-600 hover:bg-stone-200/70'
+              }`}
             >
-              <Check className="w-3.5 h-3.5" />
-              <span>Bulk Approve</span>
+              {st === 'ALL' ? 'All Contributions' : st.charAt(0) + st.slice(1).toLowerCase()}
             </button>
-          </div>
-        )}
-      </div>
-
-      {/* Status Segmented Tabs */}
-      <div className="flex flex-wrap items-center gap-2 border-b border-stone/20 pb-4">
-        {(['PENDING', 'APPROVED', 'REJECTED', 'HIDDEN', 'ARCHIVED', 'ALL'] as const).map((tab) => (
-          <button
-            key={tab}
-            onClick={() => setStatusFilter(tab)}
-            className={`px-4 py-2 rounded-xl text-xs font-ui font-bold transition-all ${
-              statusFilter === tab
-                ? 'bg-navy text-ivory shadow-sm'
-                : 'bg-white border border-stone/20 text-stone-600 hover:bg-stone-50 hover:text-navy'
-            }`}
-          >
-            {tab.charAt(0) + tab.slice(1).toLowerCase()}
-          </button>
-        ))}
-      </div>
-
-      {/* Search & Filter Bar */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-        <div className="relative sm:col-span-2">
-          <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search phrase, story title, context, language, or contributor..."
-            className="w-full pl-10 pr-4 py-2.5 bg-white border border-stone/20 rounded-xl text-xs font-body text-navy placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-gold/50"
-          />
+          ))}
         </div>
 
-        <div>
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1 sm:w-64">
+            <Search className="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              placeholder="Search phrase, translation..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-9 pr-3 py-1.5 bg-stone-50 border border-stone-200 rounded-xl text-xs font-ui text-navy placeholder:text-stone-400 focus:outline-none focus:border-gold"
+            />
+          </div>
+
           <select
             value={typeFilter}
             onChange={(e) => setTypeFilter(e.target.value)}
-            className="w-full p-2.5 bg-white border border-stone/20 rounded-xl text-xs font-body text-navy"
+            className="px-3 py-1.5 bg-stone-50 border border-stone-200 rounded-xl text-xs font-ui text-navy focus:outline-none focus:border-gold"
           >
             <option value="all">All Content Types</option>
-            <option value="vocabulary">Vocabulary / Phrase</option>
-            <option value="audio">Audio Pronunciation</option>
-            <option value="story">Oral Story</option>
+            <option value="vocabulary">Vocabulary</option>
+            <option value="story">Story</option>
             <option value="cultural-context">Cultural Context</option>
-          </select>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <label className="flex items-center gap-2 text-xs font-ui text-stone-600 bg-white border border-stone/20 px-3 py-2.5 rounded-xl cursor-pointer select-none">
-            <input
-              type="checkbox"
-              checked={reportedOnly}
-              onChange={(e) => setReportedOnly(e.target.checked)}
-              className="rounded text-gold focus:ring-gold"
-            />
-            <Flag className="w-3.5 h-3.5 text-rose-500" />
-            <span>Reported Only</span>
-          </label>
-
-          <select
-            value={hasAudioFilter}
-            onChange={(e) => setHasAudioFilter(e.target.value)}
-            className="flex-1 p-2.5 bg-white border border-stone/20 rounded-xl text-xs font-body text-navy"
-          >
-            <option value="all">Audio: All</option>
-            <option value="true">With Audio Only</option>
-            <option value="false">Text Only</option>
           </select>
         </div>
       </div>
 
-      {/* Contributions List */}
-      <div className="space-y-4">
-        {loading ? (
-          <div className="p-12 text-center text-xs font-ui text-stone-400 bg-white border border-stone/20 rounded-3xl animate-pulse">
-            Loading contributions from archive...
-          </div>
-        ) : error ? (
-          <div className="p-12 text-center text-xs text-rose-600 font-ui bg-white border border-rose-200 rounded-3xl">
-            {error}
-          </div>
-        ) : contributions.length === 0 ? (
-          <div className="p-16 text-center text-stone-400 text-xs font-ui bg-white border border-stone/20 rounded-3xl">
-            <Mic className="w-10 h-10 text-stone-300 mx-auto mb-3" />
-            <p className="font-semibold text-stone-600 text-sm">No contributions in this queue.</p>
-            <p className="text-stone-400 mt-1">Try switching status tabs or relaxing search filters.</p>
-          </div>
-        ) : (
-          contributions.map((contrib) => {
-            const pk = contrib.PK || `LANGUAGE#${contrib.languageId}`
-            const sk = contrib.SK || contrib.id
-            const itemKey = `${pk}|||${sk}`
-            const isSelected = selectedKeys.has(itemKey)
-            const status = (contrib.moderationStatus || 'PENDING').toUpperCase()
-
+      {/* Grid of Contributions */}
+      {loading ? (
+        <div className="p-12 text-center text-xs font-ui text-stone-400">Loading contributions...</div>
+      ) : filtered.length === 0 ? (
+        <AdminEmptyState
+          title="No matching contributions found"
+          description="Try selecting a different moderation status or clearing your search filters."
+        />
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {filtered.map((contrib) => {
+            const modStatus = contrib.moderationStatus || (contrib.verified ? 'APPROVED' : 'PENDING')
+            const id = contrib.id || (contrib.SK ? contrib.SK.split('#')[1] : '')
             return (
               <div
-                key={sk}
-                className={`bg-white border rounded-3xl p-5 sm:p-6 shadow-sm hover:shadow-md transition-all ${
-                  isSelected
-                    ? 'border-gold/60 ring-1 ring-gold/40 bg-amber-50/20'
-                    : 'border-stone/20'
-                }`}
+                key={contrib.SK || contrib.id}
+                className="bg-white p-5 rounded-3xl border border-stone-200/80 shadow-sm flex flex-col justify-between space-y-4 hover:border-gold/40 transition-colors"
               >
-                <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
-                  {/* Left Column: Select, Info, Content */}
-                  <div className="flex items-start gap-4 flex-1 min-w-0">
-                    <button
-                      onClick={() => toggleSelect(itemKey)}
-                      className="mt-1 focus-ring p-0.5 shrink-0"
-                      aria-label="Select contribution"
-                    >
-                      {isSelected ? (
-                        <CheckSquare className="w-5 h-5 text-gold" />
-                      ) : (
-                        <Square className="w-5 h-5 text-stone-300 hover:text-stone-500" />
-                      )}
-                    </button>
-
-                    <div className="space-y-3 flex-1 min-w-0">
-                      {/* Header Line */}
-                      <div className="flex flex-wrap items-center gap-2">
-                        <h2 className="font-display font-bold text-lg text-navy break-words">
-                          {contrib.title || '(Untitled contribution)'}
-                        </h2>
-
-                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-ui font-semibold bg-stone-100 text-stone-700 uppercase tracking-wider">
+                <div>
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="px-2 py-0.2 rounded text-[10px] font-ui uppercase font-semibold bg-stone-100 text-stone-700">
                           {contrib.type || 'entry'}
                         </span>
-
-                        <span
-                          className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                            status === 'APPROVED'
-                              ? 'bg-emerald-100 text-emerald-800'
-                              : status === 'PENDING'
-                              ? 'bg-amber-100 text-amber-900'
-                              : status === 'REJECTED'
-                              ? 'bg-rose-100 text-rose-800'
-                              : 'bg-stone-100 text-stone-700'
-                          }`}
-                        >
-                          {status}
-                        </span>
-
-                        {(contrib.reportCount || 0) > 0 && (
-                          <span className="flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-200">
-                            <Flag className="w-3 h-3" />
-                            {contrib.reportCount} Report(s)
-                          </span>
-                        )}
+                        <AdminStatusBadge status={modStatus} />
                       </div>
-
-                      {/* Language & Contributor Metadata */}
-                      <div className="text-xs font-ui text-stone-500 flex flex-wrap items-center gap-x-3 gap-y-1">
-                        <span>
-                          Language: <strong className="text-navy font-semibold">{contrib.languageName || contrib.languageId}</strong>
-                        </span>
-                        <span></span>
-                        <span>
-                          Contributor: <strong className="text-navy font-semibold">{contrib.contributorName || 'Anonymous'}</strong>
-                        </span>
-                        {contrib.location && (
-                          <>
-                            <span></span>
-                            <span>Location: {contrib.location}</span>
-                          </>
-                        )}
-                        <span></span>
-                        <span className="text-stone-400 font-mono text-[11px]">
-                          {new Date(contrib.createdAt || contrib.submittedAt || Date.now()).toLocaleDateString()}
-                        </span>
-                      </div>
-
-                      {/* Content / Transcript / Context */}
-                      {contrib.context && (
-                        <div className="p-3.5 bg-stone-50/70 border border-stone-100 rounded-2xl text-xs font-body text-stone-700 leading-relaxed">
-                          <span className="text-[10px] font-ui uppercase font-semibold text-stone-400 block mb-1">
-                            Cultural Context
-                          </span>
-                          {contrib.context}
-                        </div>
-                      )}
-
-                      {contrib.body && (
-                        <div className="p-3.5 bg-stone-50/70 border border-stone-100 rounded-2xl text-xs font-body text-stone-700 leading-relaxed">
-                          <span className="text-[10px] font-ui uppercase font-semibold text-stone-400 block mb-1">
-                            Full Story Transcript
-                          </span>
-                          {contrib.body}
-                        </div>
-                      )}
-
-                      {/* Audio Player Preview */}
-                      {contrib.audioUrl && (
-                        <div className="pt-1">
-                          <AdminAudioPlayer src={contrib.audioUrl} title={contrib.title} />
-                        </div>
+                      <h3 className="font-display font-bold text-base text-navy mt-2">
+                        {contrib.title || '(Untitled contribution)'}
+                      </h3>
+                      {(contrib as any).translation && (
+                        <p className="text-xs font-serif italic text-stone-600 mt-0.5">
+                          "{(contrib as any).translation}"
+                        </p>
                       )}
                     </div>
                   </div>
 
-                  {/* Right Column: Moderation Action Buttons */}
-                  <div className="flex sm:flex-row lg:flex-col items-center justify-end gap-2 shrink-0 pt-2 lg:pt-0 border-t lg:border-t-0 border-stone-100">
-                    {status !== 'APPROVED' && (
-                      <button
-                        onClick={() => handleModerationAction(pk, sk, 'APPROVE')}
-                        disabled={actionLoading}
-                        className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-ui font-semibold flex items-center gap-1.5 shadow-sm transition-transform active:scale-95 disabled:opacity-50 w-full justify-center"
-                      >
-                        <Check className="w-4 h-4" />
-                        <span>Approve</span>
-                      </button>
-                    )}
+                  {contrib.audioUrl && (
+                    <div className="mt-3">
+                      <AdminAudioPlayer src={contrib.audioUrl} title={contrib.title} />
+                    </div>
+                  )}
 
-                    {status !== 'REJECTED' && (
-                      <button
-                        onClick={() => {
-                          setRejectingContrib(contrib)
-                          setRejectReason('')
-                        }}
-                        disabled={actionLoading}
-                        className="px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-xs font-ui font-semibold flex items-center gap-1.5 transition-colors w-full justify-center"
-                      >
-                        <X className="w-4 h-4" />
-                        <span>Reject</span>
-                      </button>
-                    )}
+                  {((contrib as any).culturalContext || contrib.context || (contrib as any).text) && (
+                    <p className="text-xs font-ui text-stone-600 mt-3 p-3 bg-stone-50 rounded-xl leading-relaxed">
+                      {((contrib as any).culturalContext || contrib.context || (contrib as any).text)}
+                    </p>
+                  )}
 
-                    {status === 'APPROVED' && (
-                      <button
-                        onClick={() => handleModerationAction(pk, sk, 'HIDE', 'Administrative hide')}
-                        disabled={actionLoading}
-                        className="px-4 py-2 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-xl text-xs font-ui font-semibold flex items-center gap-1.5 transition-colors w-full justify-center"
-                      >
-                        <EyeOff className="w-3.5 h-3.5" />
-                        <span>Hide</span>
-                      </button>
-                    )}
+                  <div className="mt-3 flex items-center justify-between text-[11px] font-ui text-stone-400">
+                    <span>{contrib.languageName || contrib.languageId}</span>
+                    <span>by {contrib.contributorName || 'Anonymous'}</span>
+                  </div>
+                </div>
 
+                <div className="pt-3 border-t border-stone-100 flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-1">
+                    {modStatus === 'APPROVED' ? (
+                      <button
+                        onClick={() => handleModerate(id, 'HIDE')}
+                        className="px-2.5 py-1 bg-stone-100 hover:bg-amber-50 hover:text-amber-700 text-stone-600 rounded-lg text-xs font-ui transition-colors"
+                      >
+                        Hide
+                      </button>
+                    ) : modStatus === 'HIDDEN' ? (
+                      <button
+                        onClick={() => handleModerate(id, 'RESTORE')}
+                        className="px-2.5 py-1 bg-stone-100 hover:bg-emerald-50 hover:text-emerald-700 text-stone-600 rounded-lg text-xs font-ui transition-colors"
+                      >
+                        Restore
+                      </button>
+                    ) : null}
                     <button
-                      onClick={() => {
-                        setDeletingContrib(contrib)
-                        setDeleteConfirmText('')
-                      }}
-                      disabled={actionLoading}
-                      className="px-3 py-2 bg-stone-50 hover:bg-rose-50 text-stone-400 hover:text-rose-700 rounded-xl text-xs font-ui transition-colors w-full flex items-center justify-center gap-1"
-                      title="Permanently remove record and S3 audio"
+                      onClick={() => setDeletingContrib(contrib)}
+                      className="p-1.5 text-stone-400 hover:text-rose-600 rounded-lg transition-colors"
+                      title="Permanently Delete"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
-                      <span>Delete</span>
                     </button>
                   </div>
+
+                  {modStatus === 'PENDING' && (
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setRejectingContrib(contrib)}
+                        className="px-3 py-1.5 bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200 rounded-xl text-xs font-ui font-semibold transition-colors"
+                      >
+                        Reject
+                      </button>
+                      <button
+                        onClick={() => handleModerate(id, 'APPROVE')}
+                        className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-ui font-semibold shadow-sm transition-transform active:scale-95"
+                      >
+                        Approve
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             )
-          })
-        )}
-      </div>
-
-      {/* MODAL: Reject Reason */}
-      {rejectingContrib && (
-        <div className="fixed inset-0 z-50 bg-navy/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl border border-stone-200 animate-fadeIn">
-            <h3 className="font-display font-bold text-lg text-navy mb-2">
-              Reject Contribution
-            </h3>
-            <p className="text-xs text-stone-500 mb-4">
-              Specify a reason for rejecting &quot;{rejectingContrib.title}&quot;. This reason will be permanently recorded in the audit log.
-            </p>
-            <textarea
-              rows={3}
-              value={rejectReason}
-              onChange={(e) => setRejectReason(e.target.value)}
-              placeholder="Reason for rejection (e.g. offensive content, low audio quality, copyright concern)..."
-              className="w-full p-3 bg-stone-50 border border-stone-200 rounded-xl text-xs font-body text-navy focus:outline-none focus:ring-2 focus:ring-rose-500/50 mb-4"
-            />
-            <div className="flex items-center justify-end gap-3">
-              <button
-                onClick={() => setRejectingContrib(null)}
-                className="px-4 py-2 rounded-xl text-xs font-ui text-stone-600 hover:bg-stone-100"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() =>
-                  handleModerationAction(
-                    rejectingContrib.PK || `LANGUAGE#${rejectingContrib.languageId}`,
-                    rejectingContrib.SK || rejectingContrib.id,
-                    'REJECT',
-                    rejectReason
-                  )
-                }
-                disabled={actionLoading}
-                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-ui font-bold shadow-sm"
-              >
-                Confirm Rejection
-              </button>
-            </div>
-          </div>
+          })}
         </div>
       )}
 
-      {/* MODAL: Permanent Deletion */}
-      {deletingContrib && (
-        <div className="fixed inset-0 z-50 bg-navy/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl border border-rose-200 animate-fadeIn">
-            <div className="flex items-center gap-3 text-rose-600 mb-3">
-              <AlertTriangle className="w-6 h-6" />
-              <h3 className="font-display font-bold text-lg text-navy">
-                Permanent Contribution Deletion
-              </h3>
-            </div>
-            <p className="text-xs text-stone-600 mb-4 leading-relaxed">
-              This will permanently delete <span className="font-bold text-navy">&quot;{deletingContrib.title}&quot;</span> from DynamoDB and remove any associated audio file from Amazon S3 storage.
-            </p>
+      {/* Reject Modal */}
+      <AdminConfirmationDialog
+        isOpen={Boolean(rejectingContrib)}
+        title="Reject Contribution"
+        description="Please provide a rationale for declining this submission."
+        targetName={rejectingContrib?.title || 'Untitled contribution'}
+        confirmLabel="Reject Submission"
+        isDestructive={true}
+        requireReason={true}
+        isLoading={actionLoading}
+        onConfirm={(reason) => {
+          if (!rejectingContrib) return
+          const id = rejectingContrib.id || (rejectingContrib.SK ? rejectingContrib.SK.split('#')[1] : '')
+          handleModerate(id, 'REJECT', reason)
+        }}
+        onCancel={() => setRejectingContrib(null)}
+      />
 
-            <div className="mb-4">
-              <label className="block text-[11px] font-ui font-semibold text-stone-700 mb-1">
-                Type <span className="font-mono text-rose-600">DELETE</span> to confirm:
-              </label>
-              <input
-                type="text"
-                value={deleteConfirmText}
-                onChange={(e) => setDeleteConfirmText(e.target.value)}
-                placeholder="DELETE"
-                className="w-full p-2.5 bg-stone-50 border border-stone-300 rounded-xl text-xs font-mono font-bold"
-              />
-            </div>
-
-            <div className="flex items-center justify-end gap-3">
-              <button
-                onClick={() => setDeletingContrib(null)}
-                className="px-4 py-2 rounded-xl text-xs font-ui text-stone-600 hover:bg-stone-100"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handlePermanentDelete}
-                disabled={deleteConfirmText !== 'DELETE' || actionLoading}
-                className="px-5 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-ui font-bold shadow-sm disabled:opacity-40"
-              >
-                Permanently Delete
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Delete Modal */}
+      <AdminConfirmationDialog
+        isOpen={Boolean(deletingContrib)}
+        title="Permanently Delete Contribution"
+        description="Are you sure you want to permanently delete this contribution and its audio file from S3?"
+        consequence="This action is permanent and cannot be undone."
+        targetName={deletingContrib?.title || 'Untitled contribution'}
+        confirmLabel="Delete Permanently"
+        isDestructive={true}
+        isLoading={actionLoading}
+        onConfirm={handleDeleteConfirm}
+        onCancel={() => setDeletingContrib(null)}
+      />
     </div>
   )
 }

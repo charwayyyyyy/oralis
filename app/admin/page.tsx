@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, useContext } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import {
   Globe,
@@ -8,104 +8,109 @@ import {
   Flag,
   CheckCircle2,
   Clock,
-  Users,
+  ArrowRight,
   ShieldCheck,
-  ArrowUpRight,
   RefreshCw,
+  Info,
+  Database,
+  Users,
+  Activity,
   AlertTriangle,
-  FileCheck,
-  Check,
-  X,
-  Volume2,
 } from 'lucide-react'
-import { AdminContext } from '@/components/admin/admin-layout-client'
-import AdminAudioPlayer from '@/components/admin/admin-audio-player'
+import AdminStatusBadge from '@/components/admin/admin-status-badge'
+import AdminEmptyState from '@/components/admin/admin-empty-state'
+import AdminConfirmationDialog from '@/components/admin/admin-confirmation-dialog'
+import AdminReviewModal from '@/components/admin/admin-review-modal'
+import { useAdminToast } from '@/components/admin/toast-context'
+import { useAdmin } from '@/components/admin/admin-layout-client'
+import type { Language, Contribution, AuditLogEntry } from '@/lib/data'
+import type { AdminOverviewResponse } from '@/lib/admin-types'
 
 export default function AdminOverviewPage() {
-  const { refreshKey, triggerRefresh } = useContext(AdminContext)
-  const [data, setData] = useState<any>(null)
+  const { refreshKey, triggerRefresh } = useAdmin()
+  const { showToast } = useAdminToast()
+
   const [loading, setLoading] = useState(true)
+  const [data, setData] = useState<AdminOverviewResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [actionLoading, setActionLoading] = useState<string | null>(null)
+
+  // Review modal state
+  const [reviewItem, setReviewItem] = useState<{
+    type: 'language' | 'contribution'
+    item: any
+  } | null>(null)
+
+  // Reconcile dialog state
+  const [isReconcileOpen, setIsReconcileOpen] = useState(false)
   const [reconciling, setReconciling] = useState(false)
-  const [toastMessage, setToastMessage] = useState<string | null>(null)
 
-  const showToast = (msg: string) => {
-    setToastMessage(msg)
-    setTimeout(() => setToastMessage(null), 4000)
-  }
-
-  const fetchOverview = async () => {
+  const fetchOverview = useCallback(async () => {
     try {
       setLoading(true)
-      setError(null)
       const res = await fetch('/api/admin/overview', { cache: 'no-store' })
-      if (!res.ok) throw new Error('Failed to load overview data')
-      const json = await res.json()
+      if (!res.ok) throw new Error('Failed to load overview telemetry')
+      const json: AdminOverviewResponse = await res.json()
       setData(json)
+      setError(null)
     } catch (err: any) {
-      setError(err.message || 'Error loading dashboard')
+      console.error('Error fetching admin overview:', err)
+      setError(err.message || 'Failed to load telemetry')
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
 
   useEffect(() => {
     fetchOverview()
-  }, [refreshKey])
+  }, [fetchOverview, refreshKey])
 
-  // Inline Quick Approve for a Language
-  const handleQuickApproveLanguage = async (id: string, name: string) => {
-    setActionLoading(`lang-${id}`)
+  // Handle review actions from modal
+  const handleModerate = async (action: 'APPROVE' | 'REJECT' | 'HIDE' | 'ARCHIVE', reason?: string) => {
+    if (!reviewItem) return
+    const { type, item } = reviewItem
+
     try {
-      const res = await fetch(`/api/admin/languages/${id}/moderation`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'APPROVE', reason: 'Quick approval from overview dashboard' }),
-      })
-      if (!res.ok) throw new Error('Failed to approve language')
-      showToast(`Language "${name}" approved and published to the atlas!`)
+      if (type === 'language') {
+        const res = await fetch(`/api/admin/languages/${item.id}/moderation`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action, reason }),
+        })
+        if (!res.ok) throw new Error('Language moderation failed')
+        showToast(`Language "${item.name}" ${action.toLowerCase()}d successfully`, 'success')
+      } else {
+        const id = item.id || (item.SK ? item.SK.split('#')[1] : null)
+        const res = await fetch(`/api/admin/contributions/${id}/moderation`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action,
+            reason,
+            languageId: item.languageId || item.PK?.replace('LANGUAGE#', ''),
+          }),
+        })
+        if (!res.ok) throw new Error('Contribution moderation failed')
+        showToast(`Contribution ${action.toLowerCase()}d successfully`, 'success')
+      }
       triggerRefresh()
     } catch (err: any) {
-      alert(err.message || 'Approval failed')
-    } finally {
-      setActionLoading(null)
+      showToast(err.message || 'Moderation action failed', 'error')
+      throw err
     }
   }
 
-  // Inline Quick Approve for a Contribution
-  const handleQuickApproveContribution = async (PK: string, SK: string, title: string) => {
-    setActionLoading(`contrib-${SK}`)
+  // Handle database consistency reconciliation
+  const handleRunReconcile = async () => {
     try {
-      const res = await fetch(`/api/admin/contributions/${encodeURIComponent(SK)}/moderation`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ PK, SK, action: 'APPROVE', reason: 'Quick approval from overview dashboard' }),
-      })
-      if (!res.ok) throw new Error('Failed to approve contribution')
-      showToast(`Contribution "${title}" approved and added to archive!`)
-      triggerRefresh()
-    } catch (err: any) {
-      alert(err.message || 'Approval failed')
-    } finally {
-      setActionLoading(null)
-    }
-  }
-
-  // Database Reconciliation
-  const handleReconcile = async () => {
-    if (!confirm('Run database reconciliation to verify all counters and moderation states against DynamoDB items?')) {
-      return
-    }
-    setReconciling(true)
-    try {
+      setReconciling(true)
       const res = await fetch('/api/admin/reconcile', { method: 'POST' })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || 'Reconciliation failed')
-      showToast(json.message || 'Database reconciliation completed successfully!')
+      showToast('Database consistency verified and counters synchronized', 'success')
+      setIsReconcileOpen(false)
       triggerRefresh()
     } catch (err: any) {
-      alert(err.message || 'Reconciliation failed')
+      showToast(err.message || 'Consistency check failed', 'error')
     } finally {
       setReconciling(false)
     }
@@ -114,408 +119,484 @@ export default function AdminOverviewPage() {
   if (loading && !data) {
     return (
       <div className="space-y-8 animate-pulse">
-        <div className="h-8 w-64 bg-stone-200 rounded-lg" />
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-28 bg-white border border-stone-200 rounded-2xl" />
-          ))}
+        <div className="h-10 bg-stone-200/60 rounded-xl w-1/3" />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          <div className="h-36 bg-stone-200/60 rounded-3xl" />
+          <div className="h-36 bg-stone-200/60 rounded-3xl" />
+          <div className="h-36 bg-stone-200/60 rounded-3xl" />
         </div>
-        <div className="h-64 bg-white border border-stone-200 rounded-2xl" />
+        <div className="h-28 bg-stone-200/60 rounded-3xl" />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="h-64 bg-stone-200/60 rounded-3xl" />
+          <div className="h-64 bg-stone-200/60 rounded-3xl" />
+        </div>
       </div>
     )
   }
 
-  if (error || !data) {
+  if (error && !data) {
     return (
-      <div className="bg-white p-12 rounded-3xl border border-rose-200 text-center max-w-lg mx-auto">
+      <div className="p-8 bg-rose-50 border border-rose-200 rounded-3xl text-center font-body text-navy max-w-lg mx-auto my-12">
         <AlertTriangle className="w-10 h-10 text-rose-500 mx-auto mb-3" />
-        <h2 className="font-display text-xl font-bold text-navy mb-2">Signal Interrupted</h2>
-        <p className="text-sm text-stone-600 mb-6">{error || 'Could not retrieve platform metrics.'}</p>
+        <h3 className="font-display font-bold text-lg text-rose-900">Failed to Load Overview</h3>
+        <p className="text-xs font-ui text-rose-700 mt-1">{error}</p>
         <button
           onClick={fetchOverview}
-          className="px-5 py-2.5 bg-navy text-ivory rounded-xl text-xs font-ui font-bold hover:bg-navy/80 transition-colors"
+          className="mt-4 px-4 py-2 bg-navy text-gold font-ui font-semibold text-xs rounded-xl hover:bg-navy-muted transition-colors inline-flex items-center gap-1.5"
         >
-          Retry Connection
+          <RefreshCw className="w-3.5 h-3.5" />
+          <span>Retry Telemetry Request</span>
         </button>
       </div>
     )
   }
 
-  const { stats, recentLanguages, recentContributions, recentAuditLogs } = data
+  const stats = data?.stats || {
+    totalLanguages: 0,
+    pendingLanguages: 0,
+    approvedLanguages: 0,
+    rejectedLanguages: 0,
+    hiddenLanguages: 0,
+    archivedLanguages: 0,
+    totalContributions: 0,
+    pendingContributions: 0,
+    approvedContributions: 0,
+    rejectedContributions: 0,
+    hiddenContributions: 0,
+    archivedContributions: 0,
+    audioContributions: 0,
+    storyContributions: 0,
+    vocabularyContributions: 0,
+    culturalContextContributions: 0,
+    uniqueContributorDevices: 0,
+    openReports: 0,
+    resolvedReports: 0,
+    approvalRate: null,
+    medianReviewTimeMinutes: null,
+    databaseSyncStatus: 'SYNCHRONIZED',
+    lastRefreshed: new Date().toISOString(),
+    queryDurationMs: 0,
+    oldestPendingLanguageAge: null,
+    oldestPendingContributionAge: null,
+    oldestOpenReportAge: null,
+  }
+
+  const pendingLangs = (data?.recentLanguages || []).filter(
+    (l) => (l.moderationStatus || (l.status === 'PENDING_REVIEW' ? 'PENDING' : 'APPROVED')) === 'PENDING'
+  )
+
+  const pendingContribs = (data?.recentContributions || []).filter(
+    (c) => (c.moderationStatus || (c.verified ? 'APPROVED' : 'PENDING')) === 'PENDING'
+  )
+
+  const recentAudit = data?.recentAuditLogs || []
 
   return (
-    <div className="space-y-10">
-      {/* Toast Notification */}
-      {toastMessage && (
-        <div className="fixed top-20 right-6 z-50 bg-navy text-ivory px-5 py-3 rounded-2xl shadow-xl border border-gold/40 flex items-center gap-3 animate-fadeIn text-xs font-ui font-medium">
-          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-          <span>{toastMessage}</span>
-        </div>
-      )}
-
-      {/* Page Header & Quick Reconcile */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-stone/20 pb-6">
+    <div className="space-y-8 font-body">
+      {/* 1. COMPACT PAGE HEADER */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-stone-200/60">
         <div>
-          <span className="text-[11px] font-ui font-semibold text-gold uppercase tracking-[0.2em] block mb-1">
+          <span className="font-ui text-[10px] tracking-widest uppercase font-semibold text-stone-600 block">
             System Control Panel
           </span>
-          <h1 className="font-display text-3xl sm:text-4xl font-bold text-navy tracking-tight">
+          <h2 className="font-display font-bold text-2xl text-navy tracking-tight mt-0.5">
             Moderation Overview
-          </h1>
-          <p className="text-xs font-ui text-stone-500 mt-1">
-            Real-time status of submitted cultural memories and language records.
+          </h2>
+          <p className="text-xs font-ui text-stone-500 mt-0.5">
+            Real-time status of submitted cultural memories, language metadata, and community reports.
           </p>
         </div>
+      </div>
 
-        <div className="flex items-center gap-3">
-          <button
-            onClick={handleReconcile}
-            disabled={reconciling}
-            className="flex items-center gap-2 px-4 py-2.5 bg-white hover:bg-stone-50 text-navy border border-stone/30 rounded-xl text-xs font-ui font-semibold shadow-sm transition-all focus-ring disabled:opacity-50"
-            title="Recalculate and synchronize all database counters"
+      {/* 2. PRIMARY ACTION CARDS: NEEDS ATTENTION */}
+      <section aria-labelledby="needs-attention-heading" className="space-y-3">
+        <h3 id="needs-attention-heading" className="font-ui text-xs font-bold uppercase tracking-wider text-stone-500">
+          Action Required
+        </h3>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-5">
+          {/* Pending Languages Card */}
+          <Link
+            href="/admin/languages?status=PENDING"
+            className={`group p-5 rounded-3xl border transition-all shadow-sm hover:shadow-md flex flex-col justify-between ${
+              stats.pendingLanguages > 0
+                ? 'bg-amber-50/40 border-amber-200 hover:border-amber-400'
+                : 'bg-white border-stone-200 hover:border-gold/40'
+            }`}
           >
-            <RefreshCw className={`w-3.5 h-3.5 text-gold ${reconciling ? 'animate-spin' : ''}`} />
-            <span>{reconciling ? 'Reconciling...' : 'Reconcile DB'}</span>
-          </button>
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <div
+                  className={`w-8 h-8 rounded-xl flex items-center justify-center ${
+                    stats.pendingLanguages > 0 ? 'bg-amber-100 text-amber-800' : 'bg-stone-100 text-stone-500'
+                  }`}
+                >
+                  <Globe className="w-4 h-4" />
+                </div>
+                {stats.pendingLanguages > 0 && stats.oldestPendingLanguageAge && (
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-100/80 text-amber-900 font-medium">
+                    Oldest: {stats.oldestPendingLanguageAge}
+                  </span>
+                )}
+              </div>
+              <p className="text-xs font-ui font-semibold text-stone-600">Pending Languages</p>
+              <div className="font-display font-bold text-3xl text-navy mt-1 tracking-tight tabular-nums">
+                {stats.pendingLanguages}
+              </div>
+            </div>
+            <div className="mt-4 pt-3 border-t border-stone-100 flex items-center justify-between text-xs font-ui font-semibold text-gold group-hover:text-navy transition-colors">
+              <span>{stats.pendingLanguages > 0 ? 'Review language queue' : 'View all languages'}</span>
+              <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+            </div>
+          </Link>
+
+          {/* Pending Contributions Card */}
+          <Link
+            href="/admin/contributions?status=PENDING"
+            className={`group p-5 rounded-3xl border transition-all shadow-sm hover:shadow-md flex flex-col justify-between ${
+              stats.pendingContributions > 0
+                ? 'bg-amber-50/40 border-amber-200 hover:border-amber-400'
+                : 'bg-white border-stone-200 hover:border-gold/40'
+            }`}
+          >
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <div
+                  className={`w-8 h-8 rounded-xl flex items-center justify-center ${
+                    stats.pendingContributions > 0 ? 'bg-amber-100 text-amber-800' : 'bg-stone-100 text-stone-500'
+                  }`}
+                >
+                  <Mic className="w-4 h-4" />
+                </div>
+                {stats.pendingContributions > 0 && stats.oldestPendingContributionAge && (
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-100/80 text-amber-900 font-medium">
+                    Oldest: {stats.oldestPendingContributionAge}
+                  </span>
+                )}
+              </div>
+              <p className="text-xs font-ui font-semibold text-stone-600">Pending Contributions</p>
+              <div className="font-display font-bold text-3xl text-navy mt-1 tracking-tight tabular-nums">
+                {stats.pendingContributions}
+              </div>
+            </div>
+            <div className="mt-4 pt-3 border-t border-stone-100 flex items-center justify-between text-xs font-ui font-semibold text-gold group-hover:text-navy transition-colors">
+              <span>{stats.pendingContributions > 0 ? 'Review contribution queue' : 'View all contributions'}</span>
+              <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+            </div>
+          </Link>
+
+          {/* Open Reports Card */}
+          <Link
+            href="/admin/reports?status=OPEN"
+            className={`group p-5 rounded-3xl border transition-all shadow-sm hover:shadow-md flex flex-col justify-between ${
+              stats.openReports > 0
+                ? 'bg-orange-50/50 border-orange-200 hover:border-orange-400'
+                : 'bg-white border-stone-200 hover:border-gold/40'
+            }`}
+          >
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <div
+                  className={`w-8 h-8 rounded-xl flex items-center justify-center ${
+                    stats.openReports > 0 ? 'bg-orange-100 text-orange-800' : 'bg-stone-100 text-stone-500'
+                  }`}
+                >
+                  <Flag className="w-4 h-4" />
+                </div>
+                {stats.openReports > 0 && stats.oldestOpenReportAge && (
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-orange-100 text-orange-900 font-medium">
+                    Oldest: {stats.oldestOpenReportAge}
+                  </span>
+                )}
+              </div>
+              <p className="text-xs font-ui font-semibold text-stone-600">Open Community Reports</p>
+              <div className="font-display font-bold text-3xl text-navy mt-1 tracking-tight tabular-nums">
+                {stats.openReports}
+              </div>
+            </div>
+            <div className="mt-4 pt-3 border-t border-stone-100 flex items-center justify-between text-xs font-ui font-semibold text-gold group-hover:text-navy transition-colors">
+              <span>{stats.openReports > 0 ? 'Review open reports' : 'View all reports'}</span>
+              <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+            </div>
+          </Link>
         </div>
-      </div>
+      </section>
 
-      {/* KPI Cards Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
-        {/* Pending Languages */}
-        <Link
-          href="/admin/languages?status=PENDING"
-          className="bg-white p-5 rounded-2xl border border-amber-200/80 shadow-sm hover:shadow-md hover:border-amber-400 transition-all group focus-ring relative overflow-hidden"
-        >
-          <div className="flex items-center justify-between mb-2">
-            <span className="p-2 rounded-xl bg-amber-50 text-amber-700">
-              <Globe className="w-4 h-4" />
-            </span>
-            <span className="text-[10px] font-ui font-bold text-amber-800 bg-amber-100/80 px-2 py-0.5 rounded-full uppercase tracking-wider">
-              Pending
-            </span>
-          </div>
-          <div className="font-display text-3xl font-bold text-navy mt-2">
-            {stats.pendingLanguages}
-          </div>
-          <div className="text-[11px] font-ui text-stone-600 mt-1 flex items-center justify-between">
-            <span>Languages</span>
-            <ArrowUpRight className="w-3.5 h-3.5 text-stone-400 group-hover:text-navy transition-colors" />
-          </div>
-        </Link>
+      {/* 3. PLATFORM SUMMARY ROW */}
+      <section aria-labelledby="platform-summary-heading" className="bg-white border border-stone-200/80 rounded-3xl p-5 sm:p-6 shadow-sm">
+        <h3 id="platform-summary-heading" className="font-ui text-xs font-bold uppercase tracking-wider text-stone-500 mb-4">
+          Platform Summary
+        </h3>
 
-        {/* Pending Contributions */}
-        <Link
-          href="/admin/contributions?status=PENDING"
-          className="bg-white p-5 rounded-2xl border border-amber-200/80 shadow-sm hover:shadow-md hover:border-amber-400 transition-all group focus-ring relative overflow-hidden"
-        >
-          <div className="flex items-center justify-between mb-2">
-            <span className="p-2 rounded-xl bg-amber-50 text-amber-700">
-              <Mic className="w-4 h-4" />
-            </span>
-            <span className="text-[10px] font-ui font-bold text-amber-800 bg-amber-100/80 px-2 py-0.5 rounded-full uppercase tracking-wider">
-              Pending
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 divide-y sm:divide-y-0 sm:divide-x divide-stone-100">
+          <div className="pt-2 sm:pt-0 sm:px-3 first:pl-0">
+            <span className="text-[11px] font-ui text-stone-500 block">Approved Languages</span>
+            <span className="font-display font-bold text-xl text-navy mt-1 block tabular-nums">
+              {stats.approvedLanguages}
             </span>
           </div>
-          <div className="font-display text-3xl font-bold text-navy mt-2">
-            {stats.pendingContributions}
-          </div>
-          <div className="text-[11px] font-ui text-stone-600 mt-1 flex items-center justify-between">
-            <span>Contributions</span>
-            <ArrowUpRight className="w-3.5 h-3.5 text-stone-400 group-hover:text-navy transition-colors" />
-          </div>
-        </Link>
 
-        {/* Open Reports */}
-        <Link
-          href="/admin/reports"
-          className="bg-white p-5 rounded-2xl border border-rose-200 shadow-sm hover:shadow-md hover:border-rose-400 transition-all group focus-ring relative overflow-hidden"
-        >
-          <div className="flex items-center justify-between mb-2">
-            <span className="p-2 rounded-xl bg-rose-50 text-rose-700">
-              <Flag className="w-4 h-4" />
+          <div className="pt-2 sm:pt-0 sm:px-3">
+            <span className="text-[11px] font-ui text-stone-500 block">Approved Contributions</span>
+            <span className="font-display font-bold text-xl text-navy mt-1 block tabular-nums">
+              {stats.approvedContributions}
             </span>
-            {stats.openReports > 0 && (
-              <span className="text-[10px] font-ui font-bold text-rose-800 bg-rose-100 px-2 py-0.5 rounded-full uppercase tracking-wider">
-                Action
-              </span>
-            )}
           </div>
-          <div className="font-display text-3xl font-bold text-navy mt-2">
-            {stats.openReports}
-          </div>
-          <div className="text-[11px] font-ui text-stone-600 mt-1 flex items-center justify-between">
-            <span>User Reports</span>
-            <ArrowUpRight className="w-3.5 h-3.5 text-stone-400 group-hover:text-navy transition-colors" />
-          </div>
-        </Link>
 
-        {/* Approved Languages */}
-        <Link
-          href="/admin/languages?status=APPROVED"
-          className="bg-white p-5 rounded-2xl border border-stone/20 shadow-sm hover:shadow-md hover:border-gold/60 transition-all group focus-ring"
-        >
-          <div className="flex items-center justify-between mb-2">
-            <span className="p-2 rounded-xl bg-emerald-50 text-emerald-700">
-              <CheckCircle2 className="w-4 h-4" />
+          <div className="pt-2 sm:pt-0 sm:px-3">
+            <span className="text-[11px] font-ui text-stone-500 block flex items-center gap-1">
+              <span>Unique Contributors</span>
+              <span title="Distinct community contributors submitting records"><Info className="w-3 h-3 text-stone-400" /></span>
             </span>
-            <span className="text-[10px] font-ui font-bold text-emerald-800 bg-emerald-100/70 px-2 py-0.5 rounded-full uppercase tracking-wider">
-              Public
+            <span className="font-display font-bold text-xl text-navy mt-1 block tabular-nums">
+              {stats.uniqueContributorDevices}
             </span>
           </div>
-          <div className="font-display text-3xl font-bold text-navy mt-2">
-            {stats.approvedLanguages}
-          </div>
-          <div className="text-[11px] font-ui text-stone-600 mt-1 flex items-center justify-between">
-            <span>Approved Langs</span>
-            <ArrowUpRight className="w-3.5 h-3.5 text-stone-400 group-hover:text-navy transition-colors" />
-          </div>
-        </Link>
 
-        {/* Approved Contributions */}
-        <Link
-          href="/admin/contributions?status=APPROVED"
-          className="bg-white p-5 rounded-2xl border border-stone/20 shadow-sm hover:shadow-md hover:border-gold/60 transition-all group focus-ring"
-        >
-          <div className="flex items-center justify-between mb-2">
-            <span className="p-2 rounded-xl bg-emerald-50 text-emerald-700">
-              <FileCheck className="w-4 h-4" />
-            </span>
-            <span className="text-[10px] font-ui font-bold text-emerald-800 bg-emerald-100/70 px-2 py-0.5 rounded-full uppercase tracking-wider">
-              Public
+          <div className="pt-2 sm:pt-0 sm:px-3">
+            <span className="text-[11px] font-ui text-stone-500 block">Approval Rate</span>
+            <span className="font-display font-bold text-xl text-navy mt-1 block tabular-nums">
+              {stats.approvalRate !== null ? `${stats.approvalRate}%` : '—'}
             </span>
           </div>
-          <div className="font-display text-3xl font-bold text-navy mt-2">
-            {stats.approvedContributions}
-          </div>
-          <div className="text-[11px] font-ui text-stone-600 mt-1 flex items-center justify-between">
-            <span>Approved Records</span>
-            <ArrowUpRight className="w-3.5 h-3.5 text-stone-400 group-hover:text-navy transition-colors" />
-          </div>
-        </Link>
 
-        {/* Contributor Devices */}
-        <div className="bg-white p-5 rounded-2xl border border-stone/20 shadow-sm">
-          <div className="flex items-center justify-between mb-2">
-            <span className="p-2 rounded-xl bg-sky-50 text-sky-700">
-              <Users className="w-4 h-4" />
+          <div className="pt-2 sm:pt-0 sm:px-3">
+            <span className="text-[11px] font-ui text-stone-500 block">Median Review Time</span>
+            <span className="font-display font-bold text-xl text-navy mt-1 block tabular-nums">
+              {stats.medianReviewTimeMinutes !== null ? `${stats.medianReviewTimeMinutes}m` : '—'}
             </span>
-            <span className="text-[10px] font-ui text-stone-400 uppercase tracking-wider">
-              Telemetry
-            </span>
-          </div>
-          <div className="font-display text-3xl font-bold text-navy mt-2">
-            {stats.uniqueContributorDevices}
-          </div>
-          <div className="text-[11px] font-ui text-stone-600 mt-1" title="Estimated based on distinct anonymous device submissions">
-            Unique Devices ?
           </div>
         </div>
-      </div>
+      </section>
 
-      {/* Two-Column Section: Pending Triage Queues */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Pending Language Submissions */}
-        <div className="bg-white border border-stone/20 rounded-3xl p-6 shadow-sm flex flex-col justify-between">
+      {/* 4. ACTIVE REVIEW QUEUES */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Pending Languages Queue */}
+        <div className="bg-white border border-stone-200/80 rounded-3xl p-5 sm:p-6 shadow-sm flex flex-col justify-between">
           <div>
-            <div className="flex items-center justify-between mb-4 pb-3 border-b border-stone-100">
+            <div className="flex items-center justify-between pb-3 mb-4 border-b border-stone-100">
               <div className="flex items-center gap-2">
                 <Globe className="w-4 h-4 text-gold" />
-                <h2 className="font-display font-bold text-lg text-navy">Pending Languages</h2>
-                {stats.pendingLanguages > 0 && (
+                <h3 className="font-display font-bold text-base text-navy">Pending Languages</h3>
+                {pendingLangs.length > 0 && (
                   <span className="px-2 py-0.5 bg-amber-100 text-amber-900 rounded-full text-xs font-mono font-bold">
-                    {stats.pendingLanguages}
+                    {pendingLangs.length}
                   </span>
                 )}
               </div>
               <Link
                 href="/admin/languages?status=PENDING"
-                className="text-xs font-ui text-gold hover:text-navy font-semibold flex items-center gap-1"
+                className="text-xs font-ui font-semibold text-gold hover:text-navy flex items-center gap-1"
               >
-                <span>View all</span>
-                <ArrowUpRight className="w-3 h-3" />
+                <span>View queue</span>
+                <ArrowRight className="w-3 h-3" />
               </Link>
             </div>
 
-            {recentLanguages.filter((l: any) => l.moderationStatus === 'PENDING').length === 0 ? (
-              <div className="py-12 text-center text-stone-400 text-xs font-ui">
-                <CheckCircle2 className="w-8 h-8 text-emerald-500/50 mx-auto mb-2" />
-                <span>All submitted languages have been moderated.</span>
-              </div>
+            {pendingLangs.length === 0 ? (
+              <AdminEmptyState
+                title="No languages need review."
+                description="The moderation queue was checked recently. All submitted languages have been reviewed."
+                actionLabel="View reviewed languages"
+                actionHref="/admin/languages"
+              />
             ) : (
               <div className="space-y-3">
-                {recentLanguages
-                  .filter((l: any) => l.moderationStatus === 'PENDING')
-                  .slice(0, 4)
-                  .map((lang: any) => (
-                    <div
-                      key={lang.id}
-                      className="p-3.5 bg-stone-50/70 border border-stone-200/80 rounded-2xl flex items-center justify-between gap-3 hover:bg-white hover:border-gold/40 transition-all"
-                    >
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className="font-display font-bold text-sm text-navy truncate">
-                            {lang.name}
-                          </span>
-                          {lang.nativeName && (
-                            <span className="text-xs text-stone-500 italic truncate">
-                              ({lang.nativeName})
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-[11px] font-ui text-stone-500 truncate mt-0.5">
-                          {lang.region || 'Region unlisted'}  {lang.contributorName || 'Anonymous'}
-                        </p>
+                {pendingLangs.slice(0, 4).map((lang: any) => (
+                  <div
+                    key={lang.id}
+                    className="p-3.5 bg-stone-50/70 border border-stone-200/80 rounded-2xl flex items-center justify-between gap-3 hover:bg-white hover:border-gold/40 transition-all"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-display font-bold text-sm text-navy truncate">{lang.name}</span>
+                        {lang.nativeName && (
+                          <span className="text-xs text-stone-400 font-serif italic truncate">({lang.nativeName})</span>
+                        )}
                       </div>
-
-                      <div className="flex items-center gap-2 shrink-0">
-                        <button
-                          onClick={() => handleQuickApproveLanguage(lang.id, lang.name)}
-                          disabled={actionLoading === `lang-${lang.id}`}
-                          className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-ui font-semibold flex items-center gap-1 shadow-sm transition-transform active:scale-95 disabled:opacity-50"
-                        >
-                          <Check className="w-3.5 h-3.5" />
-                          <span>Approve</span>
-                        </button>
-                        <Link
-                          href={`/admin/languages?search=${encodeURIComponent(lang.name)}`}
-                          className="px-2.5 py-1.5 bg-white border border-stone-200 hover:bg-stone-50 text-navy rounded-lg text-xs font-ui transition-colors"
-                        >
-                          Details
-                        </Link>
-                      </div>
+                      <p className="text-[11px] font-ui text-stone-500 truncate mt-0.5">
+                        {lang.region || 'Global'} · by {lang.contributorName || 'Anonymous'}
+                      </p>
                     </div>
-                  ))}
+
+                    <button
+                      onClick={() => setReviewItem({ type: 'language', item: lang })}
+                      className="px-3 py-1.5 bg-navy hover:bg-navy-muted text-gold rounded-xl text-xs font-ui font-semibold shrink-0 transition-colors shadow-sm"
+                    >
+                      Review
+                    </button>
+                  </div>
+                ))}
               </div>
             )}
           </div>
         </div>
 
-        {/* Pending Contributions */}
-        <div className="bg-white border border-stone/20 rounded-3xl p-6 shadow-sm flex flex-col justify-between">
+        {/* Pending Contributions Queue */}
+        <div className="bg-white border border-stone-200/80 rounded-3xl p-5 sm:p-6 shadow-sm flex flex-col justify-between">
           <div>
-            <div className="flex items-center justify-between mb-4 pb-3 border-b border-stone-100">
+            <div className="flex items-center justify-between pb-3 mb-4 border-b border-stone-100">
               <div className="flex items-center gap-2">
                 <Mic className="w-4 h-4 text-gold" />
-                <h2 className="font-display font-bold text-lg text-navy">Pending Contributions</h2>
-                {stats.pendingContributions > 0 && (
+                <h3 className="font-display font-bold text-base text-navy">Pending Contributions</h3>
+                {pendingContribs.length > 0 && (
                   <span className="px-2 py-0.5 bg-amber-100 text-amber-900 rounded-full text-xs font-mono font-bold">
-                    {stats.pendingContributions}
+                    {pendingContribs.length}
                   </span>
                 )}
               </div>
               <Link
                 href="/admin/contributions?status=PENDING"
-                className="text-xs font-ui text-gold hover:text-navy font-semibold flex items-center gap-1"
+                className="text-xs font-ui font-semibold text-gold hover:text-navy flex items-center gap-1"
               >
-                <span>View all</span>
-                <ArrowUpRight className="w-3 h-3" />
+                <span>View queue</span>
+                <ArrowRight className="w-3 h-3" />
               </Link>
             </div>
 
-            {recentContributions.filter((c: any) => c.moderationStatus === 'PENDING').length === 0 ? (
-              <div className="py-12 text-center text-stone-400 text-xs font-ui">
-                <CheckCircle2 className="w-8 h-8 text-emerald-500/50 mx-auto mb-2" />
-                <span>All pending contributions have been reviewed.</span>
-              </div>
+            {pendingContribs.length === 0 ? (
+              <AdminEmptyState
+                title="No contributions need review."
+                description="New submissions from the preservation studio will appear here automatically."
+                actionLabel="View all contributions"
+                actionHref="/admin/contributions"
+              />
             ) : (
               <div className="space-y-3">
-                {recentContributions
-                  .filter((c: any) => c.moderationStatus === 'PENDING')
-                  .slice(0, 4)
-                  .map((contrib: any) => (
-                    <div
-                      key={contrib.SK}
-                      className="p-3.5 bg-stone-50/70 border border-stone-200/80 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-white hover:border-gold/40 transition-all"
-                    >
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className="font-display font-bold text-sm text-navy truncate">
-                            {contrib.title || '(Untitled contribution)'}
-                          </span>
-                          <span className="px-2 py-0.2 bg-stone-200 text-stone-700 rounded text-[10px] font-ui uppercase tracking-wider">
-                            {contrib.type || 'entry'}
-                          </span>
-                        </div>
-                        <p className="text-[11px] font-ui text-stone-500 truncate mt-0.5">
-                          {contrib.languageName || contrib.languageId}  by {contrib.contributorName || 'Anonymous'}
-                        </p>
+                {pendingContribs.slice(0, 4).map((contrib: any) => (
+                  <div
+                    key={contrib.SK || contrib.id}
+                    className="p-3.5 bg-stone-50/70 border border-stone-200/80 rounded-2xl flex items-center justify-between gap-3 hover:bg-white hover:border-gold/40 transition-all"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-display font-bold text-sm text-navy truncate">
+                          {contrib.title || '(Untitled contribution)'}
+                        </span>
+                        <span className="px-2 py-0.2 bg-stone-200/80 text-stone-700 rounded text-[10px] font-ui uppercase font-semibold">
+                          {contrib.type || 'entry'}
+                        </span>
                       </div>
-
-                      <div className="flex items-center gap-2 shrink-0">
-                        {contrib.audioUrl && (
-                          <AdminAudioPlayer src={contrib.audioUrl} title={contrib.title} />
-                        )}
-                        <button
-                          onClick={() => handleQuickApproveContribution(contrib.PK, contrib.SK, contrib.title)}
-                          disabled={actionLoading === `contrib-${contrib.SK}`}
-                          className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-ui font-semibold flex items-center gap-1 shadow-sm transition-transform active:scale-95 disabled:opacity-50"
-                        >
-                          <Check className="w-3.5 h-3.5" />
-                          <span>Approve</span>
-                        </button>
-                      </div>
+                      <p className="text-[11px] font-ui text-stone-500 truncate mt-0.5">
+                        {contrib.languageName || contrib.languageId || 'Language'} · by {contrib.contributorName || 'Anonymous'}
+                      </p>
                     </div>
-                  ))}
+
+                    <button
+                      onClick={() => setReviewItem({ type: 'contribution', item: contrib })}
+                      className="px-3 py-1.5 bg-navy hover:bg-navy-muted text-gold rounded-xl text-xs font-ui font-semibold shrink-0 transition-colors shadow-sm"
+                    >
+                      Review
+                    </button>
+                  </div>
+                ))}
               </div>
             )}
           </div>
         </div>
       </div>
 
-      {/* Recent Audit Trail Preview */}
-      <div className="bg-white border border-stone/20 rounded-3xl p-6 shadow-sm">
-        <div className="flex items-center justify-between mb-4 pb-3 border-b border-stone-100">
+      {/* 5. RECENT ADMINISTRATIVE ACTIONS */}
+      <section aria-labelledby="recent-activity-heading" className="bg-white border border-stone-200/80 rounded-3xl p-5 sm:p-6 shadow-sm">
+        <div className="flex items-center justify-between pb-3 mb-4 border-b border-stone-100">
           <div className="flex items-center gap-2">
             <ShieldCheck className="w-4 h-4 text-gold" />
-            <h2 className="font-display font-bold text-lg text-navy">Recent Administrative Actions</h2>
+            <h3 id="recent-activity-heading" className="font-display font-bold text-base text-navy">
+              Recent Administrative Activity
+            </h3>
           </div>
           <Link
             href="/admin/audit"
-            className="text-xs font-ui text-gold hover:text-navy font-semibold flex items-center gap-1"
+            className="text-xs font-ui font-semibold text-gold hover:text-navy flex items-center gap-1"
           >
             <span>Full Audit Log</span>
-            <ArrowUpRight className="w-3 h-3" />
+            <ArrowRight className="w-3 h-3" />
           </Link>
         </div>
 
-        {recentAuditLogs.length === 0 ? (
+        {recentAudit.length === 0 ? (
           <p className="text-xs font-ui text-stone-400 py-6 text-center">No moderation actions recorded yet.</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs font-ui">
               <thead>
                 <tr className="border-b border-stone-100 text-stone-400 uppercase text-[10px] tracking-wider">
-                  <th className="pb-3 font-semibold">Timestamp</th>
-                  <th className="pb-3 font-semibold">Action</th>
-                  <th className="pb-3 font-semibold">Target Entity</th>
-                  <th className="pb-3 font-semibold">Moderator</th>
-                  <th className="pb-3 font-semibold">Reason</th>
+                  <th className="pb-2.5 font-semibold">Timestamp</th>
+                  <th className="pb-2.5 font-semibold">Action</th>
+                  <th className="pb-2.5 font-semibold">Target Entity</th>
+                  <th className="pb-2.5 font-semibold">Moderator</th>
+                  <th className="pb-2.5 font-semibold">Reason</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-stone-100">
-                {recentAuditLogs.map((log: any) => (
-                  <tr key={log.id || log.SK} className="hover:bg-stone-50/50">
-                    <td className="py-3 text-stone-500 font-mono text-[11px]">
-                      {new Date(log.timestamp).toLocaleString()}
+                {recentAudit.slice(0, 5).map((log: any) => (
+                  <tr key={log.id || log.SK} className="hover:bg-stone-50/50 transition-colors">
+                    <td className="py-2.5 text-stone-500 font-mono text-[11px]">
+                      {new Date(log.timestamp || log.SK || Date.now()).toLocaleString()}
                     </td>
-                    <td className="py-3 font-semibold text-navy">
+                    <td className="py-2.5 font-semibold text-navy">
                       <span className="px-2 py-0.5 bg-stone-100 text-stone-800 rounded font-mono text-[10px]">
                         {log.action}
                       </span>
                     </td>
-                    <td className="py-3 text-stone-700">
+                    <td className="py-2.5 text-stone-700">
                       {log.entityType} ({log.entityId})
                     </td>
-                    <td className="py-3 text-stone-500">{log.actorId}</td>
-                    <td className="py-3 text-stone-600 max-w-xs truncate">{log.reason || ''}</td>
+                    <td className="py-2.5 text-stone-500">{log.actorId || 'Curator'}</td>
+                    <td className="py-2.5 text-stone-600 max-w-xs truncate">{log.reason || '—'}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
         )}
-      </div>
+      </section>
+
+      {/* 6. SYSTEM HEALTH & MAINTENANCE PANEL */}
+      <section aria-labelledby="system-health-heading" className="bg-stone-50/80 border border-stone-200/80 rounded-3xl p-5 sm:p-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <Database className="w-4 h-4 text-stone-500" />
+              <h3 id="system-health-heading" className="font-display font-bold text-base text-navy">
+                System Health & Data Consistency
+              </h3>
+            </div>
+            <p className="text-xs font-ui text-stone-500 mt-1 max-w-2xl leading-relaxed">
+              Verifies DynamoDB partition integrity across all language metadata records, contribution sort keys, and recalculates accurate counter totals across the Atlas.
+            </p>
+          </div>
+
+          <button
+            onClick={() => setIsReconcileOpen(true)}
+            className="px-4 py-2 bg-white hover:bg-stone-100 border border-stone-200 rounded-xl text-xs font-ui font-semibold text-navy flex items-center gap-2 transition-colors shrink-0 shadow-sm self-start sm:self-auto"
+          >
+            <RefreshCw className="w-3.5 h-3.5 text-stone-500" />
+            <span>Check Data Consistency</span>
+          </button>
+        </div>
+      </section>
+
+      {/* Review Modal */}
+      <AdminReviewModal
+        isOpen={Boolean(reviewItem)}
+        type={reviewItem?.type || 'language'}
+        item={reviewItem?.item || null}
+        onClose={() => setReviewItem(null)}
+        onModerate={handleModerate}
+      />
+
+      {/* Confirmation Dialog for Data Consistency Check */}
+      <AdminConfirmationDialog
+        isOpen={isReconcileOpen}
+        title="Check Data Consistency & Recalculate Counters"
+        description="This will scan all language metadata and contributions in the database to verify sort keys, audit public visibility predicates, and synchronize language contribution counters."
+        consequence="Safe maintenance operation. No existing records or audio files will be deleted or overwritten."
+        confirmLabel="Run Consistency Check"
+        isLoading={reconciling}
+        onConfirm={handleRunReconcile}
+        onCancel={() => setIsReconcileOpen(false)}
+      />
     </div>
   )
 }

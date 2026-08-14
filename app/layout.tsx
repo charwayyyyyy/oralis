@@ -124,6 +124,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
+      suppressHydrationWarning
       className={`${playfair.variable} ${lora.variable} ${inter.variable} ${ibmPlexMono.variable} bg-navy-abyss`}
     >
       <head>
