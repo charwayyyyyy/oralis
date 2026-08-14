@@ -6,7 +6,7 @@ import { ADMIN_COOKIE_NAME, verifyAdminSession } from '@/lib/auth/admin'
 import AdminLayoutClient from '@/components/admin/admin-layout-client'
 
 export const metadata: Metadata = {
-  title: 'Oralis Living Cultural Atlas  Administration & Moderation',
+  title: 'Oralis Living Cultural Atlas — Administration & Moderation',
   description: 'Control panel for reviewing, moderating, and curating endangered language submissions and oral history records.',
   robots: {
     index: false,

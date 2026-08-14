@@ -87,7 +87,7 @@ export default function Navigation() {
         >
           {/* Logo lockup */}
           <div className="flex items-center gap-3">
-            <Link href="/" className="flex items-center gap-3 group focus-ring rounded-lg p-1 -ml-1" aria-label="Oralis  World View">
+            <Link href="/" className="flex items-center gap-3 group focus-ring rounded-lg p-1 -ml-1" aria-label="Oralis — World View">
               <span
                 className={cn(
                   'relative grid place-items-center h-12 w-[4.25rem] rounded-lg overflow-hidden transition-all duration-500',

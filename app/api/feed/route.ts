@@ -11,6 +11,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { QueryCommand } from '@aws-sdk/lib-dynamodb'
 import { getDb, TABLE_NAME } from '@/lib/aws/dynamodb'
 import { getPresignedDownloadUrl } from '@/lib/aws/s3'
+import { isPubliclyVisibleContribution, serializePublicContribution } from '@/lib/contracts/contribution'
 
 export const runtime = 'nodejs'
 export const fetchCache = 'force-no-store'
@@ -55,25 +56,22 @@ export async function GET(request: NextRequest) {
     const result = await db.send(command)
     const duration = Date.now() - startTime
 
-    // Filter strictly for approved contributions in the public feed
-    const rawItems = (result.Items ?? []).filter((item) => {
-      if (item.moderationStatus === 'APPROVED') return true
-      if (item.verified === true) return true
-      return false
-    }).slice(0, limit)
+    // Filter strictly for approved contributions using centralized visibility predicate
+    const rawItems = (result.Items ?? []).filter((item) => isPubliclyVisibleContribution(item)).slice(0, limit)
 
-    // Generate presigned audio URLs
+    // Generate presigned audio URLs and serialize into safe public DTOs
     const items = await Promise.all(
       rawItems.map(async (item) => {
-        const s3Key = item.audioS3Key || item.s3Key
-        if (s3Key && !item.audioUrl) {
+        const s3Key = (item.audioS3Key as string) || (item.s3Key as string)
+        let audioUrl: string | null = (item.audioUrl as string) || null
+        if (s3Key && !audioUrl) {
           try {
-            item.audioUrl = await getPresignedDownloadUrl(s3Key as string)
+            audioUrl = await getPresignedDownloadUrl(s3Key)
           } catch (err) {
-            console.error('[API /feed] Failed to sign URL for', s3Key, err)
+            console.warn('[API /feed] Failed to sign URL for', s3Key, err)
           }
         }
-        return item
+        return serializePublicContribution(item, audioUrl)
       }),
     )
 

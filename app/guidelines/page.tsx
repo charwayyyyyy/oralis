@@ -1,7 +1,7 @@
 import Link from 'next/link'
 
 export const metadata = {
-  title: 'Community Guidelines & Cultural Stewardship â Oralis',
+  title: 'Community Guidelines & Cultural Stewardship — Oralis',
   description: 'Guidelines for ethical cultural preservation, informed community consent, elder permissions, and respectful linguistic archiving on Oralis.',
 }
 
@@ -97,7 +97,7 @@ export default function GuidelinesPage() {
             href="/contribute"
             className="inline-flex items-center gap-2 px-8 py-4 bg-gold text-navy font-ui text-sm font-bold rounded-xl hover:bg-gold-warm transition-all shadow-md focus-ring"
           >
-            I Understand â Proceed to Preservation Studio â
+            I Understand — Proceed to Preservation Studio →
           </Link>
         </div>
       </div>

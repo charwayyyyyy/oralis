@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { getDb, TABLE_NAME } from '@/lib/aws/dynamodb'
 import { requireAdmin, handleAdminApiAuthError } from '@/lib/auth/admin'
 import { logAuditEvent } from '@/lib/services/languages'
+import { isPubliclyVisibleContribution, CONTRIBUTION_SK_PREFIX } from '@/lib/contracts/contribution'
 
 export const runtime = 'nodejs'
 
@@ -19,47 +20,66 @@ export async function POST() {
   const startTime = Date.now()
 
   try {
-    // 1. Scan languages
-    const langRes = await db.send(
-      new ScanCommand({
+    // 1. Scan all languages (handling pagination)
+    let languages: any[] = []
+    let lastEvaluatedLangKey: Record<string, any> | undefined = undefined
+    do {
+      const scanParams: any = {
         TableName: TABLE_NAME,
         FilterExpression: 'SK = :sk AND begins_with(PK, :pkPrefix)',
         ExpressionAttributeValues: {
           ':sk': 'META',
           ':pkPrefix': 'LANGUAGE#',
         },
-      })
-    )
-    const languages = langRes.Items || []
+      }
+      if (lastEvaluatedLangKey) {
+        scanParams.ExclusiveStartKey = lastEvaluatedLangKey
+      }
+      const langRes: any = await db.send(new ScanCommand(scanParams))
+      if (langRes.Items) {
+        languages = languages.concat(langRes.Items)
+      }
+      lastEvaluatedLangKey = langRes.LastEvaluatedKey
+    } while (lastEvaluatedLangKey)
 
-    // 2. Scan contributions
-    const contribRes = await db.send(
-      new ScanCommand({
+    // 2. Scan all contributions (handling pagination)
+    let contributions: any[] = []
+    let lastEvaluatedContribKey: Record<string, any> | undefined = undefined
+    do {
+      const scanParams: any = {
         TableName: TABLE_NAME,
         FilterExpression: 'begins_with(SK, :skPrefix)',
         ExpressionAttributeValues: {
-          ':skPrefix': 'CONTRIBUTION',
+          ':skPrefix': CONTRIBUTION_SK_PREFIX,
         },
-      })
-    )
-    const contributions = contribRes.Items || []
+      }
+      if (lastEvaluatedContribKey) {
+        scanParams.ExclusiveStartKey = lastEvaluatedContribKey
+      }
+      const contribRes: any = await db.send(new ScanCommand(scanParams))
+      if (contribRes.Items) {
+        contributions = contributions.concat(contribRes.Items)
+      }
+      lastEvaluatedContribKey = contribRes.LastEvaluatedKey
+    } while (lastEvaluatedContribKey)
 
-    // 3. Tally approved contributions per language
+    // 3. Tally approved contributions per language using centralized visibility predicate
     const tallies: Record<string, { audioCount: number; storiesArchived: number; contributors: Set<string> }> = {}
     languages.forEach((l) => {
       tallies[l.id] = { audioCount: 0, storiesArchived: 0, contributors: new Set() }
     })
 
     contributions.forEach((c) => {
-      const isApproved = c.moderationStatus === 'APPROVED' || c.verified === true
-      if (isApproved && tallies[c.languageId]) {
+      const isApproved = isPubliclyVisibleContribution(c)
+      const langId = c.languageId || (typeof c.PK === 'string' ? c.PK.replace('LANGUAGE#', '') : '')
+      if (isApproved && tallies[langId]) {
         if (c.type === 'story') {
-          tallies[c.languageId].storiesArchived++
+          tallies[langId].storiesArchived++
         } else {
-          tallies[c.languageId].audioCount++
+          tallies[langId].audioCount++
         }
         if (c.contributorName) {
-          tallies[c.languageId].contributors.add(c.contributorName.toLowerCase().trim())
+          tallies[langId].contributors.add(c.contributorName.toLowerCase().trim())
         }
       }
     })
@@ -106,9 +126,13 @@ export async function POST() {
       reason: 'Administrator triggered full database reconciliation',
     })
 
-    revalidatePath('/')
-    revalidatePath('/explore')
-    revalidatePath('/observatory')
+    try {
+      revalidatePath('/')
+      revalidatePath('/explore')
+      revalidatePath('/observatory')
+    } catch {
+      // ignore
+    }
 
     return NextResponse.json({
       success: true,

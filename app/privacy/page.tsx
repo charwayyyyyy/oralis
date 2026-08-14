@@ -1,7 +1,7 @@
 import Link from 'next/link'
 
 export const metadata = {
-  title: 'Privacy & Token Ownership  Oralis',
+  title: 'Privacy & Token Ownership — Oralis',
   description: 'Privacy architecture, no-account token stewardship, DynamoDB and S3 storage transparency on Oralis.',
 }
 
@@ -80,10 +80,10 @@ export default function PrivacyPage() {
 
         <div className="pt-6 border-t border-border/30 flex justify-between items-center flex-wrap gap-4 font-ui text-xs text-stone/60">
           <Link href="/profile" className="text-gold hover:text-navy underline font-bold">
-            Go to Manage My Token Tool ?
+            Go to Manage My Token Tool →
           </Link>
           <Link href="/terms" className="text-stone hover:text-navy underline">
-            Terms of Archiving ?
+            Terms of Archiving →
           </Link>
         </div>
       </div>

@@ -130,7 +130,7 @@ export default function RootLayout({
         <WebSiteSchema />
         <OrganizationSchema />
       </head>
-      <body className="antialiased font-body flex flex-col min-h-screen">
+      <body suppressHydrationWarning className="antialiased font-body flex flex-col min-h-screen">
         <Navigation />
         <main className="flex-grow">
           <PageTransition>

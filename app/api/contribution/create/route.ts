@@ -12,6 +12,7 @@ import { getDb, TABLE_NAME } from '@/lib/aws/dynamodb'
 import { rateLimit } from '@/lib/rate-limit'
 import { ContributionCreateSchema } from '@/lib/validations'
 import { logAuditEvent } from '@/lib/services/languages'
+import { formatContributionSK } from '@/lib/contracts/contribution'
 
 export const runtime = 'nodejs'
 
@@ -58,7 +59,7 @@ export async function POST(req: NextRequest) {
 
   const now         = new Date().toISOString()
   const id          = nanoid()
-  const sk          = `CONTRIBUTION:${now}#${id}`
+  const sk          = formatContributionSK(now, id)
   const deleteToken = crypto.randomUUID()
 
   const item: Record<string, unknown> = {

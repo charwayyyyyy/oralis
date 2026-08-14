@@ -3,7 +3,7 @@
 import React, { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ShieldCheck, Lock, ArrowRight, Eye, EyeOff, AlertCircle } from 'lucide-react'
+import { Lock, ArrowRight, Eye, EyeOff, AlertCircle } from 'lucide-react'
 
 export default function AdminLoginPage() {
   const router = useRouter()
@@ -58,14 +58,28 @@ export default function AdminLoginPage() {
 
       <div className="sm:mx-auto sm:w-full sm:max-w-md relative z-10">
         <div className="flex justify-center mb-6">
-          <Link href="/" className="inline-flex items-center gap-3 p-2 rounded-2xl bg-white border border-gold/40 shadow-sm focus-ring">
-            <span className="w-10 h-10 rounded-xl bg-navy flex items-center justify-center text-gold">
-              <ShieldCheck className="w-6 h-6 text-gold" />
+          <Link
+            href="/"
+            className="inline-flex items-center gap-3.5 p-2 pr-5 rounded-2xl bg-white/90 backdrop-blur-sm border border-gold/40 shadow-sm hover:shadow-md transition-all group focus-ring"
+          >
+            {/* Official Oralis Logo with Gold Corner Brackets */}
+            <span className="relative grid place-items-center h-12 w-[4.25rem] rounded-lg overflow-hidden bg-ivory/90 border border-gold/40 shadow-sm ring-1 ring-inset ring-navy/5 group-hover:border-gold transition-all duration-300">
+              <span
+                aria-hidden="true"
+                className="absolute inset-0 bg-no-repeat transition-transform duration-500 group-hover:scale-105"
+                style={{
+                  backgroundImage: 'url(/oralis-logo.png)',
+                  backgroundSize: '303% 400%',
+                  backgroundPosition: '55% 22%',
+                }}
+              />
+              <span aria-hidden="true" className="pointer-events-none absolute left-1 top-1 h-1.5 w-1.5 border-l border-t border-gold/70" />
+              <span aria-hidden="true" className="pointer-events-none absolute right-1 bottom-1 h-1.5 w-1.5 border-r border-b border-gold/70" />
             </span>
-            <div className="text-left pr-3">
-              <span className="block font-display font-bold text-xl text-navy">Oralis</span>
-              <span className="block font-ui text-[9px] tracking-[0.25em] uppercase text-stone-500">
-                Curatorial Access
+            <div className="text-left">
+              <span className="block font-display font-bold text-2xl text-navy leading-none">Oralis</span>
+              <span className="block font-ui text-[9px] tracking-[0.25em] uppercase text-stone-500 mt-1">
+                Curator Portal
               </span>
             </div>
           </Link>
@@ -139,8 +153,8 @@ export default function AdminLoginPage() {
           </form>
 
           <div className="mt-8 pt-6 border-t border-stone-100 flex items-center justify-between text-xs font-ui text-stone-500">
-            <Link href="/" className="hover:text-navy transition-colors">
-              ? Return to Atlas
+            <Link href="/" className="hover:text-navy transition-colors flex items-center gap-1">
+              <span>← Return to Atlas</span>
             </Link>
             <span className="text-[11px] text-stone-400">Oralis v0.1.0</span>
           </div>

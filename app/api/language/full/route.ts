@@ -8,6 +8,7 @@
 import { NextResponse } from 'next/server'
 import { getLanguageById, getLanguageContributions } from '@/lib/services/languages'
 import { getPresignedDownloadUrl } from '@/lib/aws/s3'
+import { serializePublicContribution } from '@/lib/contracts/contribution'
 
 export const runtime = 'nodejs'
 export const fetchCache = 'force-no-store'
@@ -35,18 +36,15 @@ export async function GET(request: Request) {
     const contributions = await Promise.all(
       rawContributions.map(async (c) => {
         const s3Key = c.audioS3Key || c.s3Key
-        let audioUrl = c.audioUrl
+        let audioUrl: string | null = c.audioUrl || null
         if (s3Key && !audioUrl) {
           try {
             audioUrl = await getPresignedDownloadUrl(s3Key as string)
           } catch (err) {
-            console.error('[API /language/full] Failed to sign audio URL:', s3Key, err)
+            console.warn('[API /language/full] Failed to sign audio URL for', s3Key, err)
           }
         }
-        return {
-          ...c,
-          audioUrl,
-        }
+        return serializePublicContribution(c, audioUrl)
       })
     )
 

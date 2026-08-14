@@ -31,6 +31,11 @@ import type {
   LanguageSubmitInput,
   LanguageMetadataUpdateInput,
 } from '@/lib/validations'
+import {
+  CONTRIBUTION_SK_PREFIX,
+  isContributionSK,
+  isPubliclyVisibleContribution,
+} from '@/lib/contracts/contribution'
 
 export function slugify(text: string): string {
   return text
@@ -263,32 +268,36 @@ export async function getLanguageContributions(
 ): Promise<Contribution[]> {
   const db = getDb()
 
-  try {
-    const result = await db.send(
-      new QueryCommand({
-        TableName: TABLE_NAME,
-        KeyConditionExpression: 'PK = :pk AND begins_with(SK, :skPrefix)',
-        ExpressionAttributeValues: {
-          ':pk': `LANGUAGE#${languageId}`,
-          ':skPrefix': 'CONTRIBUTION#',
-        },
-        ScanIndexForward: false,
-        Limit: limit,
-      })
-    )
+  const result = await db.send(
+    new QueryCommand({
+      TableName: TABLE_NAME,
+      KeyConditionExpression: 'PK = :pk AND begins_with(SK, :skPrefix)',
+      ExpressionAttributeValues: {
+        ':pk': `LANGUAGE#${languageId}`,
+        ':skPrefix': CONTRIBUTION_SK_PREFIX,
+      },
+      ScanIndexForward: false,
+      Limit: limit * 2, // Fetch buffer to account for filtering
+    })
+  )
 
-    const items = (result.Items ?? []) as Contribution[]
+  const rawItems = (result.Items ?? []) as Contribution[]
+  
+  // Validate sort key pattern
+  const items = rawItems.filter((c) => isContributionSK(c.SK))
 
-    if (!allowAdmin) {
-      // Filter strictly approved for public readers
-      return items.filter((c) => c.moderationStatus === 'APPROVED' || c.verified === true)
-    }
+  // Sort newest first
+  items.sort((a, b) => {
+    const timeA = new Date(a.createdAt || a.submittedAt || 0).getTime()
+    const timeB = new Date(b.createdAt || b.submittedAt || 0).getTime()
+    return timeB - timeA
+  })
 
-    return items
-  } catch (err) {
-    console.error('[getLanguageContributions] Query error:', err)
-    return []
+  if (!allowAdmin) {
+    return items.filter((c) => isPubliclyVisibleContribution(c)).slice(0, limit)
   }
+
+  return items.slice(0, limit)
 }
 
 // --- ADMIN QUERIES & MODERATION ACTIONS ------------------------------

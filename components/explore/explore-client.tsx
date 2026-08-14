@@ -12,6 +12,7 @@
 
 import { useState, useMemo, useEffect, useRef } from 'react'
 import Link from 'next/link'
+import ExploreWorldMap from './explore-world-map'
 import {
   VITALITY_STATUS_LABELS,
   VITALITY_STATUS_COLORS,
@@ -22,7 +23,7 @@ import {
 
 const CONTINENTS = ['All', 'Africa', 'Americas', 'Asia', 'Europe', 'Oceania']
 const STATUSES: { value: string; label: string }[] = [
-  { value: 'all',                    label: 'All statuses'          },
+  { value: 'all',                   label: 'All statuses'          },
   { value: 'safe',                   label: 'Safe'                  },
   { value: 'vulnerable',             label: 'Vulnerable'            },
   { value: 'endangered',             label: 'Endangered'            },
@@ -31,11 +32,11 @@ const STATUSES: { value: string; label: string }[] = [
 ]
 
 const CONTINENT_NARRATIVES: Record<string, string> = {
-  'Africa':   'Africa holds 712 documented languages — a continent of extraordinary linguistic diversity where 89 face critical threat.',
-  'Americas': 'The Americas contain 847 languages, many belonging to isolated families found nowhere else on Earth. 234 are critically endangered.',
-  'Asia':     'Asia\'s 934 documented languages span from the Siberian tundra to tropical archipelagos. 312 are at critical risk.',
-  'Europe':   'Europe\'s 198 documented languages include ancient Celtic, Uralic, and Basque tongues. 54 face extinction.',
-  'Oceania':  'Oceania\'s 156 languages represent the world\'s highest density per capita. Half face critical threat.',
+  'Africa':   'Africa holds documented languages across a continent of extraordinary linguistic diversity with profound oral traditions.',
+  'Americas': 'The Americas contain rich language systems, many belonging to isolated families found nowhere else on Earth.',
+  'Asia':     'Asia\'s documented languages span from high plateaus to tropical archipelagos with deep historical literatures.',
+  'Europe':   'Europe\'s indigenous languages include ancient Celtic, Uralic, and isolate Basque tongues.',
+  'Oceania':  'Oceania represents extraordinary linguistic density per capita across islands and archipelagoes.',
 }
 
 function toXY(lat: number, lon: number) {
@@ -64,7 +65,7 @@ function LanguageCard({ lang, isActive, onHover, delay }: {
 }) {
   const ref    = useRef<HTMLAnchorElement>(null)
   const inView = useInView(ref as React.RefObject<HTMLElement>)
-  const color  = VITALITY_STATUS_COLORS[lang.status]
+  const color  = VITALITY_STATUS_COLORS[lang.status] || '#C8A96B'
 
   return (
     <Link
@@ -86,39 +87,41 @@ function LanguageCard({ lang, isActive, onHover, delay }: {
           <h3 className="font-display text-xl font-bold text-navy leading-tight group-hover:text-gold transition-colors">
             {lang.name}
           </h3>
-          <p className="font-body text-sm text-stone/80 italic mt-0.5">{lang.nativeName}</p>
+          {lang.nativeName && (
+            <p className="font-body text-sm text-stone/80 italic mt-0.5">{lang.nativeName}</p>
+          )}
         </div>
         <span
           className="shrink-0 w-3 h-3 rounded-full mt-1.5 animate-glow-breathe"
           style={{
             backgroundColor: color,
-            '--vitality-glow-intensity': lang.vitalityScore < 20 ? '0.4' : '0.15',
-            '--vitality-pulse-speed':    lang.vitalityScore < 20 ? '1.5s' : '3s',
+            '--vitality-glow-intensity': (lang.vitalityScore ?? 0) < 20 ? '0.4' : '0.15',
+            '--vitality-pulse-speed':    (lang.vitalityScore ?? 0) < 20 ? '1.5s' : '3s',
           } as React.CSSProperties}
-          aria-label={VITALITY_STATUS_LABELS[lang.status]}
+          aria-label={VITALITY_STATUS_LABELS[lang.status] || lang.status}
         />
       </div>
 
       <div className="flex items-center gap-3 mb-4 font-ui text-xs text-stone/60">
-        <span>{lang.country}</span>
-        <span aria-hidden="true">&middot;</span>
-        <span>{formatSpeakers(lang.speakers)}</span>
-        <span aria-hidden="true">&middot;</span>
-        <span>{lang.continent}</span>
+        <span>{lang.country || 'Global'}</span>
+        <span aria-hidden="true">·</span>
+        <span>{formatSpeakers(lang.speakers ?? 0)}</span>
+        <span aria-hidden="true">·</span>
+        <span>{lang.continent || 'Global'}</span>
       </div>
 
       <div className="h-1.5 bg-border/40 rounded-full overflow-hidden mb-3">
         <div
           className="h-full rounded-full transition-all duration-700"
-          style={{ width: `${lang.vitalityScore}%`, backgroundColor: color }}
+          style={{ width: `${Math.min(100, Math.max(0, lang.vitalityScore ?? 0))}%`, backgroundColor: color }}
         />
       </div>
 
       <div className="flex items-center justify-between">
         <span className="font-ui text-xs font-semibold tracking-wide uppercase" style={{ color }}>
-          {VITALITY_STATUS_LABELS[lang.status]}
+          {VITALITY_STATUS_LABELS[lang.status] || lang.status}
         </span>
-        <span className="font-mono text-xs text-stone/50 font-medium">{lang.vitalityScore}/100</span>
+        <span className="font-mono text-xs text-stone/50 font-medium">{lang.vitalityScore ?? 0}/100</span>
       </div>
 
       {lang.featuredPhrase && (
@@ -153,33 +156,53 @@ export default function ExploreClient({ languages }: Props) {
     setSortBy('vitality')
   }
 
+  // Calculate actual unique countries from data
+  const uniqueCountriesCount = useMemo(() => {
+    const set = new Set<string>()
+    languages.forEach((l) => {
+      if (l.country && typeof l.country === 'string') {
+        l.country.split('&').forEach((c) => {
+          const trimmed = c.trim()
+          if (trimmed) set.add(trimmed.toLowerCase())
+        })
+      }
+    })
+    return set.size || 1
+  }, [languages])
+
   const filtered = useMemo(() => {
     return languages.filter((l) => {
       const q = search.toLowerCase().trim()
       return (
         (!q || 
           l.name.toLowerCase().includes(q) || 
-          l.country.toLowerCase().includes(q) || 
-          l.nativeName.toLowerCase().includes(q) ||
-          l.region.toLowerCase().includes(q)
+          (l.country && l.country.toLowerCase().includes(q)) || 
+          (l.nativeName && l.nativeName.toLowerCase().includes(q)) ||
+          (l.region && l.region.toLowerCase().includes(q))
         ) &&
         (continent === 'All' || l.continent === continent) &&
         (status === 'all' || l.status === status)
       )
     }).sort((a, b) => {
       if (sortBy === 'name')     return a.name.localeCompare(b.name)
-      if (sortBy === 'vitality') return a.vitalityScore - b.vitalityScore
-      if (sortBy === 'speakers') return b.speakers - a.speakers
+      if (sortBy === 'vitality') return (a.vitalityScore ?? 0) - (b.vitalityScore ?? 0)
+      if (sortBy === 'speakers') return (b.speakers ?? 0) - (a.speakers ?? 0)
       return 0
     })
   }, [languages, search, continent, status, sortBy])
+
+  // Filter languages with valid finite coordinates for map rendering
+  const mappedLanguages = useMemo(() => {
+    return filtered.filter((l) => Number.isFinite(l.lat) && Number.isFinite(l.lon))
+  }, [filtered])
 
   const grouped = useMemo(() => {
     if (continent !== 'All' || search.trim() !== '') return null
     const groups: Record<string, Language[]> = {}
     filtered.forEach((l) => {
-      if (!groups[l.continent]) groups[l.continent] = []
-      groups[l.continent].push(l)
+      const c = l.continent || 'Global'
+      if (!groups[c]) groups[c] = []
+      groups[c].push(l)
     })
     return groups
   }, [filtered, continent, search])
@@ -190,7 +213,7 @@ export default function ExploreClient({ languages }: Props) {
       <div className="bg-navy-abyss text-ivory relative overflow-hidden">
         {/* Layered background typography */}
         <span
-          className="editorial-bg-text top-6 right-8 text-[18vw] opacity-25 select-none"
+          className="editorial-bg-text top-6 right-8 text-[18vw] opacity-10 select-none pointer-events-none"
           aria-hidden="true"
         >
           ATLAS
@@ -214,65 +237,58 @@ export default function ExploreClient({ languages }: Props) {
             Navigate the world&apos;s<br />linguistic heritage.
           </h1>
           <p className="font-body text-ivory/80 text-lg max-w-xl leading-relaxed">
-            {languages.length.toLocaleString()} documented languages across 147 countries. Explore by
-            geography, vitality, and cultural density.
+            {languages.length.toLocaleString()} documented languages across {uniqueCountriesCount} {uniqueCountriesCount === 1 ? 'country' : 'countries'}. Explore by geography, vitality, and cultural density.
           </p>
         </div>
       </div>
 
       {/* Atlas map view */}
       <div className="bg-navy-abyss border-b border-navy/50 relative overflow-hidden" style={{ height: 'clamp(280px, 42vh, 400px)' }}>
-        <svg viewBox="0 0 1000 500" className="absolute inset-0 w-full h-full" aria-hidden="true" preserveAspectRatio="xMidYMid meet">
-          {[-60,-30,0,30,60].map(lat => {
-            const y = ((90 - lat) / 180) * 500
-            return <line key={lat} x1="0" y1={y} x2="1000" y2={y} stroke="#C8A96B" strokeWidth="0.3" strokeDasharray="2,12" opacity="0.12" />
-          })}
-          {[-120,-60,0,60,120].map(lon => {
-            const x = ((lon + 180) / 360) * 1000
-            return <line key={lon} x1={x} y1="0" x2={x} y2="500" stroke="#C8A96B" strokeWidth="0.3" strokeDasharray="2,12" opacity="0.12" />
-          })}
-          <path d="M130,100 L170,70 L230,75 L265,105 L275,145 L255,190 L225,215 L195,200 L165,165 L140,130 Z"
-            fill="rgba(200,169,107,0.03)" stroke="#C8A96B" strokeWidth="0.5" opacity="0.3" />
-          <path d="M240,240 L275,230 L300,260 L295,330 L270,375 L245,380 L220,360 L215,310 L225,265 Z"
-            fill="rgba(200,169,107,0.03)" stroke="#C8A96B" strokeWidth="0.5" opacity="0.3" />
-          <path d="M455,85 L510,75 L535,95 L525,120 L500,135 L470,128 L450,108 Z"
-            fill="rgba(200,169,107,0.03)" stroke="#C8A96B" strokeWidth="0.5" opacity="0.3" />
-          <path d="M465,140 L525,128 L555,160 L555,235 L535,285 L505,305 L475,285 L460,232 L455,180 Z"
-            fill="rgba(200,169,107,0.03)" stroke="#C8A96B" strokeWidth="0.5" opacity="0.3" />
-          <path d="M535,80 L710,65 L750,95 L740,155 L700,172 L648,160 L600,170 L565,148 L538,115 Z"
-            fill="rgba(200,169,107,0.03)" stroke="#C8A96B" strokeWidth="0.5" opacity="0.3" />
-          <path d="M705,280 L770,268 L800,298 L788,345 L750,358 L712,342 L698,308 Z"
-            fill="rgba(200,169,107,0.03)" stroke="#C8A96B" strokeWidth="0.5" opacity="0.3" />
-        </svg>
+        {/* Accurate Equirectangular World Map Silhouette */}
+        <ExploreWorldMap />
 
-        {filtered.map((lang) => {
-          const { x, y } = toXY(lang.lat ?? 0, lang.lon ?? 0)
-          const color    = VITALITY_STATUS_COLORS[lang.status]
-          const isHov    = hovered === lang.id
+        {/* Interactive Language Coordinate Markers */}
+        {mappedLanguages.map((lang) => {
+          const { x, y } = toXY(lang.lat!, lang.lon!)
+          const isHov = hovered === lang.id
+          const color = VITALITY_STATUS_COLORS[lang.status] || '#C8A96B'
+
           return (
             <Link
               key={lang.id}
               href={`/language/${lang.id}`}
-              className="absolute -translate-x-1/2 -translate-y-1/2 group z-10 p-2 focus-ring rounded-full"
+              className="absolute -translate-x-1/2 -translate-y-1/2 group focus:outline-none focus:ring-2 focus:ring-gold rounded-full z-10"
               style={{ left: `${x}%`, top: `${y}%` }}
               onMouseEnter={() => setHovered(lang.id)}
               onMouseLeave={() => setHovered(null)}
-              aria-label={`${lang.name} — ${lang.country}`}
+              onFocus={() => setHovered(lang.id)}
+              onBlur={() => setHovered(null)}
+              aria-label={`${lang.name} (${lang.country || 'Global'}) — ${VITALITY_STATUS_LABELS[lang.status] || lang.status}`}
             >
+              {/* Invisible touch target (minimum 44x44px for accessibility) */}
+              <span className="absolute -inset-3.5 block" aria-hidden="true" />
+
+              {/* Visible dot indicator */}
               <span
-                className="block rounded-full transition-all duration-200"
+                className="relative block rounded-full transition-transform duration-200"
                 style={{
-                  width:     isHov ? 16 : 9,
-                  height:    isHov ? 16 : 9,
+                  width: isHov ? '12px' : '8px',
+                  height: isHov ? '12px' : '8px',
                   backgroundColor: color,
-                  boxShadow: isHov ? `0 0 14px 4px ${color}60, 0 0 0 3px rgba(247,244,238,0.3)` : `0 0 6px ${color}40`,
+                  boxShadow: isHov
+                    ? `0 0 16px ${color}, 0 0 0 2px #FAF8F5`
+                    : `0 0 8px ${color}60`,
                 }}
               />
+
+              {/* Floating tooltip */}
               {isHov && (
-                <div className="absolute z-20 pointer-events-none" style={{ bottom: '160%', left: '50%', transform: 'translateX(-50%)', whiteSpace: 'nowrap' }}>
-                  <div className="glass-navy rounded-lg px-4 py-2.5 shadow-xl animate-layer-emerge border border-gold/30">
-                    <p className="font-display text-xs font-bold text-ivory">{lang.name}</p>
-                    <p className="font-ui text-[10px] text-ivory/60">{lang.country} · {lang.vitalityScore}/100</p>
+                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 pointer-events-none z-30 whitespace-nowrap animate-fadeIn">
+                  <div className="glass-heavy rounded-xl px-3 py-2 shadow-2xl border border-gold/30 text-center">
+                    <p className="font-display font-bold text-xs text-navy leading-none mb-1">{lang.name}</p>
+                    <p className="font-ui text-[10px] text-stone/80">
+                      {lang.country || 'Global'} · {lang.vitalityScore ?? 0}/100
+                    </p>
                   </div>
                 </div>
               )}
@@ -280,22 +296,25 @@ export default function ExploreClient({ languages }: Props) {
           )
         })}
 
-        <div className="absolute bottom-4 left-6 glass-dark rounded-xl px-4 py-2.5 flex items-center gap-4 border border-ivory/10">
+        {/* Legend */}
+        <div className="absolute bottom-4 left-6 glass-dark rounded-xl px-4 py-2.5 flex flex-wrap items-center gap-4 border border-ivory/10 max-w-[calc(100%-160px)]">
           {(['critically-endangered', 'endangered', 'vulnerable', 'safe'] as VitalityStatus[]).map((s) => (
             <div key={s} className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full" style={{ backgroundColor: VITALITY_STATUS_COLORS[s] }} />
-              <span className="font-ui text-[10px] text-ivory/60 hidden sm:inline">{VITALITY_STATUS_LABELS[s]}</span>
+              <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: VITALITY_STATUS_COLORS[s] }} />
+              <span className="font-ui text-[10px] text-ivory/80">{VITALITY_STATUS_LABELS[s]}</span>
             </div>
           ))}
         </div>
+
+        {/* Result counter */}
         <div className="absolute bottom-4 right-6">
-          <span className="font-ui text-xs text-ivory/50 glass-dark rounded-xl px-3.5 py-1.5 border border-ivory/10">
-            {filtered.length} languages mapped
+          <span className="font-ui text-xs text-ivory/70 glass-dark rounded-xl px-3.5 py-1.5 border border-ivory/10">
+            {mappedLanguages.length} languages mapped
           </span>
         </div>
       </div>
 
-      {/* Sticky Filter bar with tactile iOS-inspired controls */}
+      {/* Sticky Filter bar */}
       <div className="sticky top-[72px] z-30 glass-heavy border-b border-border/40 backdrop-blur-md">
         <div className="max-w-7xl mx-auto px-6 lg:px-16 py-3.5 flex flex-wrap gap-3 items-center justify-between">
           
@@ -310,7 +329,7 @@ export default function ExploreClient({ languages }: Props) {
                 type="search"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search languages or countries…"
+                placeholder="Search languages or countries..."
                 aria-label="Search languages by name, native script or country"
                 className="w-full pl-10 pr-8 py-2.5 font-ui text-sm glass rounded-xl focus:outline-none focus:ring-2 focus:ring-gold text-navy placeholder:text-stone/40 min-h-[44px]"
               />
@@ -318,14 +337,14 @@ export default function ExploreClient({ languages }: Props) {
                 <button
                   onClick={() => setSearch('')}
                   aria-label="Clear search"
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-stone/50 hover:text-navy p-1 text-sm font-bold"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-stone/50 hover:text-navy p-1 text-sm font-bold focus-ring rounded"
                 >
-                  ×
+                  ✕
                 </button>
               )}
             </div>
 
-            {/* Continent Segment Buttons — Swipeable on mobile */}
+            {/* Continent Segment Buttons */}
             <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar p-1 rounded-xl bg-muted/60 border border-border/40 max-w-full">
               {CONTINENTS.map((c) => (
                 <button
@@ -367,7 +386,7 @@ export default function ExploreClient({ languages }: Props) {
             {hasFiltersActive && (
               <button
                 onClick={clearAllFilters}
-                className="font-ui text-xs text-gold hover:text-navy font-bold underline px-2 py-2 min-h-[44px] flex items-center"
+                className="font-ui text-xs text-gold hover:text-navy font-bold underline px-2 py-2 min-h-[44px] flex items-center focus-ring rounded"
               >
                 Clear filters
               </button>
