@@ -16,7 +16,7 @@ import { LanguageDatasetSchema } from '@/components/seo/structured-data'
 
 export const revalidate = 3600
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://oralis.world'
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://oralis-psi.vercel.app'
 
 // Generate static paths from DynamoDB at build time (falls back to local data)
 export async function generateStaticParams() {
@@ -83,7 +83,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       url: `${SITE_URL}/language/${lang.id}`,
       images: [
         {
-          url: '/oralis-logo.png',
+          url: '/socialshare.png',
           width: 1200,
           height: 630,
           alt: `${lang.name} Cultural Archive on Oralis`,
@@ -94,7 +94,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       card: 'summary_large_image',
       title: `${title} | Oralis`,
       description,
-      images: ['/oralis-logo.png'],
+      images: ['/socialshare.png'],
     },
   }
 }

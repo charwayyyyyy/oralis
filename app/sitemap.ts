@@ -2,7 +2,7 @@ import type { MetadataRoute } from 'next'
 import { getAllLanguages } from '@/lib/services/languages'
 import { LANGUAGES } from '@/lib/data'
 
-const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://oralis.world'
+const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://oralis-psi.vercel.app'
 
 function parseSafeDate(val?: string): Date {
   if (!val) return new Date()

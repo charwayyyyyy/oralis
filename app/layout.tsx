@@ -34,16 +34,16 @@ const ibmPlexMono = IBM_Plex_Mono({
   display: 'swap',
 })
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://oralis.world'
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://oralis-psi.vercel.app'
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: 'Oralis — Living Atlas of Endangered Languages & Cultural Memory',
+    default: 'Oralis — Every Language Carries a World',
     template: '%s | Oralis',
   },
   description:
-    'Every language carries a world. Oralis is a living cultural preservation platform where native speakers, families, and communities archive endangered languages, oral histories, and pronunciations in their own voices.',
+    'A living cultural atlas for preserving endangered languages, oral histories and cultural knowledge in communities’ own voices.',
   keywords: [
     'endangered languages',
     'language preservation',
@@ -66,25 +66,25 @@ export const metadata: Metadata = {
     type: 'website',
     locale: 'en_US',
     url: SITE_URL,
-    siteName: 'Oralis — Living Cultural Preservation Platform',
-    title: 'Oralis — Living Atlas of Endangered Languages & Cultural Memory',
+    siteName: 'Oralis',
+    title: 'Oralis — Every Language Carries a World',
     description:
-      'Every language carries a world. Explore living voices, pronunciations, and oral histories of endangered languages across the globe.',
+      'A living cultural atlas for preserving endangered languages, oral histories and cultural knowledge in communities’ own voices.',
     images: [
       {
-        url: '/oralis-logo.png',
+        url: '/socialshare.png',
         width: 1200,
         height: 630,
-        alt: 'Oralis Endangered Languages Platform',
+        alt: 'Oralis — a living cultural atlas for endangered languages',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Oralis — Living Atlas of Endangered Languages & Cultural Memory',
+    title: 'Oralis — Every Language Carries a World',
     description:
-      'Every language carries a world. Safeguarding humanity\'s endangered linguistic heritage with native speaker communities.',
-    images: ['/oralis-logo.png'],
+      'A living cultural atlas for preserving endangered languages, oral histories and cultural knowledge in communities’ own voices.',
+    images: ['/socialshare.png'],
   },
   robots: {
     index: true,

@@ -27,12 +27,12 @@ export interface LanguageDatasetSchemaProps {
   dateModified?: string
 }
 
-const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://oralis.world'
+const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://oralis-psi.vercel.app'
 
 export function WebSiteSchema({
   url = BASE_URL,
-  name = 'Oralis — Living Cultural Preservation Platform',
-  description = 'Navigate humanity\'s linguistic heritage. A living cultural atlas of endangered languages, oral histories, and community voices.',
+  name = 'Oralis — Every Language Carries a World',
+  description = 'A living cultural atlas for preserving endangered languages, oral histories and cultural knowledge in communities’ own voices.',
 }: WebSiteSchemaProps) {
   const schema = {
     '@context': 'https://schema.org',
@@ -45,7 +45,7 @@ export function WebSiteSchema({
       '@type': 'Organization',
       name: 'Oralis Platform',
       url: BASE_URL,
-      logo: `${BASE_URL}/oralis-logo.png`,
+      logo: `${BASE_URL}/gravatar.png`,
     },
     potentialAction: {
       '@type': 'SearchAction',
@@ -68,7 +68,7 @@ export function WebSiteSchema({
 export function OrganizationSchema({
   url = BASE_URL,
   name = 'Oralis',
-  logo = `${BASE_URL}/oralis-logo.png`,
+  logo = `${BASE_URL}/gravatar.png`,
 }: OrganizationSchemaProps) {
   const schema = {
     '@context': 'https://schema.org',
