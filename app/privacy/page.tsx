@@ -1,7 +1,7 @@
 import Link from 'next/link'
 
 export const metadata = {
-  title: 'Privacy & Token Ownership — Oralis',
+  title: 'Privacy & Token Ownership  Oralis',
   description: 'Privacy architecture, no-account token stewardship, DynamoDB and S3 storage transparency on Oralis.',
 }
 
@@ -48,7 +48,7 @@ export default function PrivacyPage() {
             When you submit a recording or story, our server generates a secure UUID delete token. This token is shown to you once upon sealing the record and is stored alongside the encrypted database item.
           </p>
           <p className="font-body text-stone/80 text-base leading-relaxed">
-            Because we do not store your identity, your delete token is your key to delete your contribution at any time.
+            Because we do not store your identity, your delete token is your key to permanently remove your contribution and its audio from both DynamoDB and Amazon S3 at any time.
           </p>
         </section>
 
@@ -65,7 +65,14 @@ export default function PrivacyPage() {
         </section>
 
         <section className="glass-heavy rounded-2xl p-8 border border-border/40 space-y-4">
-          <h2 className="font-display text-2xl font-bold text-navy">4. Rate Limiting & Network Security</h2>
+          <h2 className="font-display text-2xl font-bold text-navy">4. Curatorial Review & Moderation</h2>
+          <p className="font-body text-stone/80 text-base leading-relaxed">
+            To preserve cultural authenticity and prevent spam or inappropriate content, new submissions are safely stored and reviewed by archive curators before becoming publicly discoverable in the atlas. Administrative moderation decisions are permanently audited for institutional accountability.
+          </p>
+        </section>
+
+        <section className="glass-heavy rounded-2xl p-8 border border-border/40 space-y-4">
+          <h2 className="font-display text-2xl font-bold text-navy">5. Rate Limiting & Network Security</h2>
           <p className="font-body text-stone/80 text-base leading-relaxed">
             To prevent automated abuse and denial-of-service, our API enforces an in-memory sliding window rate limit based on client IP addresses. These counters expire after 60 seconds and are never tied to individual contributions or stored in persistent logs.
           </p>
@@ -73,10 +80,10 @@ export default function PrivacyPage() {
 
         <div className="pt-6 border-t border-border/30 flex justify-between items-center flex-wrap gap-4 font-ui text-xs text-stone/60">
           <Link href="/profile" className="text-gold hover:text-navy underline font-bold">
-            Go to Manage My Token Tool →
+            Go to Manage My Token Tool ?
           </Link>
           <Link href="/terms" className="text-stone hover:text-navy underline">
-            Terms of Archiving →
+            Terms of Archiving ?
           </Link>
         </div>
       </div>

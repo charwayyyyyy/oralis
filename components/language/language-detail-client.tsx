@@ -383,7 +383,7 @@ export default function LanguageDetailClient({ lang }: { lang: Language }) {
 
             {/* Recent contributions */}
             <div className="space-y-4">
-              {RECENT_CONTRIBUTIONS.slice(0, 4).map((c) => (
+              {RECENT_CONTRIBUTIONS.slice(0, 4).map((c: any) => (
                 <div key={c.id} className="glass-heavy rounded-xl p-5 flex items-start gap-4">
                   <span className="w-2 h-2 rounded-full bg-gold mt-1.5 shrink-0" aria-hidden="true" />
                   <div className="flex-1">

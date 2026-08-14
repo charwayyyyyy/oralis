@@ -246,7 +246,7 @@ export default function ExploreClient({ languages }: Props) {
         </svg>
 
         {filtered.map((lang) => {
-          const { x, y } = toXY(lang.lat, lang.lon)
+          const { x, y } = toXY(lang.lat ?? 0, lang.lon ?? 0)
           const color    = VITALITY_STATUS_COLORS[lang.status]
           const isHov    = hovered === lang.id
           return (

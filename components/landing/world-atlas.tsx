@@ -100,10 +100,13 @@ export default function WorldAtlas() {
 
       {/* Language dots with vitality glow */}
       {LANGUAGES.map((lang, i) => {
-        const x = ((lang.lon + 180) / 360) * 100
-        const y = ((90 - lang.lat) / 180) * 100
-        const color = VITALITY_STATUS_COLORS[lang.status]
-        const glowColor = getVitalityGlow(lang.status)
+        const lon = lang.lon ?? 0
+        const lat = lang.lat ?? 0
+        const x = ((lon + 180) / 360) * 100
+        const y = ((90 - lat) / 180) * 100
+        const statusKey = (lang.vitalityStatus || lang.status) as string
+        const color = VITALITY_STATUS_COLORS[statusKey] || '#C8A96B'
+        const glowColor = getVitalityGlow(statusKey as any)
         const isPulsing = pulse === i
         const isHov = hovered === lang.id
 

@@ -45,4 +45,5 @@ export function getDb(): DynamoDBDocumentClient {
   return client
 }
 
-export const TABLE_NAME = process.env.DYNAMODB_TABLE ?? 'oralis-production'
+export const TABLE_NAME = process.env.DYNAMODB_TABLE ?? 'oralis'
+

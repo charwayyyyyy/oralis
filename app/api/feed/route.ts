@@ -3,20 +3,16 @@
  *
  * GET /api/feed?limit=20&cursor=<base64>
  *
- * Fetches the global chronological feed of all contributions.
+ * Fetches the global chronological feed of APPROVED contributions.
  * Uses GSI1 (GSI1PK = 'FEED', sorted by GSI1SK descending).
- *
- * Pagination:
- *   - Pass cursor (base64-encoded LastEvaluatedKey) to get the next page
- *   - Response includes nextCursor (null when no more pages)
  */
 
 import { NextRequest, NextResponse } from 'next/server'
 import { QueryCommand } from '@aws-sdk/lib-dynamodb'
 import { getDb, TABLE_NAME } from '@/lib/aws/dynamodb'
+import { getPresignedDownloadUrl } from '@/lib/aws/s3'
 
 export const runtime = 'nodejs'
-// Disable caching so the feed is always fresh
 export const fetchCache = 'force-no-store'
 
 const DEFAULT_LIMIT = 20
@@ -25,7 +21,6 @@ const MAX_LIMIT = 50
 export async function GET(request: NextRequest) {
   const url = new URL(request.url)
 
-  // ── Parse query params ────────────────────────────────────────────────────
   const rawLimit = parseInt(url.searchParams.get('limit') ?? String(DEFAULT_LIMIT), 10)
   const limit = isNaN(rawLimit) || rawLimit < 1 ? DEFAULT_LIMIT : Math.min(rawLimit, MAX_LIMIT)
 
@@ -52,21 +47,26 @@ export async function GET(request: NextRequest) {
       IndexName:                 'GSI1',
       KeyConditionExpression:    'GSI1PK = :pk',
       ExpressionAttributeValues: { ':pk': 'FEED' },
-      ScanIndexForward:          false, // Descending (newest first)
-      Limit:                     limit,
+      ScanIndexForward:          false,
+      Limit:                     limit * 2, // Fetch buffer to filter for approved items
       ...(exclusiveStartKey ? { ExclusiveStartKey: exclusiveStartKey } : {}),
     })
 
     const result = await db.send(command)
     const duration = Date.now() - startTime
 
-    // ── Generate presigned audio URLs ─────────────────────────────────────
-    const { getPresignedDownloadUrl } = await import('@/lib/aws/s3')
+    // Filter strictly for approved contributions in the public feed
+    const rawItems = (result.Items ?? []).filter((item) => {
+      if (item.moderationStatus === 'APPROVED') return true
+      if (item.verified === true) return true
+      return false
+    }).slice(0, limit)
 
+    // Generate presigned audio URLs
     const items = await Promise.all(
-      (result.Items ?? []).map(async (item) => {
+      rawItems.map(async (item) => {
         const s3Key = item.audioS3Key || item.s3Key
-        if (s3Key) {
+        if (s3Key && !item.audioUrl) {
           try {
             item.audioUrl = await getPresignedDownloadUrl(s3Key as string)
           } catch (err) {
@@ -77,21 +77,17 @@ export async function GET(request: NextRequest) {
       }),
     )
 
-    // ── Build next cursor ─────────────────────────────────────────────────
     const nextCursor = result.LastEvaluatedKey
       ? Buffer.from(JSON.stringify(result.LastEvaluatedKey)).toString('base64')
       : null
 
-    console.info(`[API /feed] Fetched ${items.length} items in ${duration}ms`, {
-      nextCursor: !!nextCursor,
-      scannedCount: result.ScannedCount,
-    })
+    console.info(`[API /feed] Returned ${items.length} approved items in ${duration}ms`)
 
     return NextResponse.json({
-      success:    true,
+      success: true,
       items,
-      count:      items.length,
-      nextCursor,           // null when no more pages
+      count: items.length,
+      nextCursor,
     })
   } catch (error) {
     console.error(`[API /feed] DynamoDB Query Failed:`, error)

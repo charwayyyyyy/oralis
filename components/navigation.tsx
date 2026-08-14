@@ -1,10 +1,11 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { useState, useEffect, useRef } from 'react'
 import { cn } from '@/lib/utils'
 import { LANGUAGES } from '@/lib/data'
+import { ShieldCheck, Lock } from 'lucide-react'
 
 const navLinks = [
   { href: '/explore',    label: 'Discover',    depth: 'Regional Discovery' },
@@ -27,12 +28,25 @@ function getAtlasDepth(pathname: string) {
 
 export default function Navigation() {
   const pathname   = usePathname()
+  const router     = useRouter()
   const [menuOpen, setMenuOpen] = useState(false)
   const triggerRef = useRef<HTMLButtonElement>(null)
   const menuRef    = useRef<HTMLDivElement>(null)
 
   const isHome = pathname === '/'
   const depth = getAtlasDepth(pathname)
+
+  // Secret admin keyboard shortcut (Shift + Alt + A)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.shiftKey && e.altKey && e.key.toLowerCase() === 'a') || (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'a')) {
+        e.preventDefault()
+        router.push('/admin/login')
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [router])
 
   useEffect(() => { 
     setMenuOpen(false) 
@@ -58,9 +72,13 @@ export default function Navigation() {
     }
   }, [menuOpen])
 
+  // If in admin routes, navigation is handled by AdminNav
+  if (pathname.startsWith('/admin')) {
+    return null
+  }
+
   return (
     <>
-      {/* Nav is always glass-heavy and always visible — no scroll logic */}
       <header className="fixed top-0 left-0 right-0 z-50 glass-heavy border-b border-border/20" role="banner">
         <nav
           className="max-w-7xl mx-auto px-6 lg:px-12 flex items-center justify-between"
@@ -68,44 +86,48 @@ export default function Navigation() {
           aria-label="Main Navigation"
         >
           {/* Logo lockup */}
-          <Link href="/" className="flex items-center gap-3 group focus-ring rounded-lg p-1 -ml-1" aria-label="Oralis — World View">
-            <span
-              className={cn(
-                'relative grid place-items-center h-12 w-[4.25rem] rounded-lg overflow-hidden transition-all duration-500',
-                'bg-ivory/90 backdrop-blur-sm border border-gold/40 shadow-sm',
-                'ring-1 ring-inset ring-navy/5 group-hover:border-gold group-hover:shadow-md',
-              )}
-            >
+          <div className="flex items-center gap-3">
+            <Link href="/" className="flex items-center gap-3 group focus-ring rounded-lg p-1 -ml-1" aria-label="Oralis  World View">
               <span
-                aria-hidden="true"
-                className="absolute inset-0 bg-no-repeat transition-transform duration-500 group-hover:scale-105"
-                style={{
-                  backgroundImage: 'url(/oralis-logo.png)',
-                  backgroundSize: '303% 400%',
-                  backgroundPosition: '55% 22%',
-                }}
-              />
-              <span aria-hidden="true" className="pointer-events-none absolute left-1 top-1 h-1.5 w-1.5 border-l border-t border-gold/70" />
-              <span aria-hidden="true" className="pointer-events-none absolute right-1 bottom-1 h-1.5 w-1.5 border-r border-b border-gold/70" />
-            </span>
-            <span className="flex flex-col leading-none">
-              <span className="font-display text-2xl font-bold tracking-tight text-navy">
-                Oralis
+                className={cn(
+                  'relative grid place-items-center h-12 w-[4.25rem] rounded-lg overflow-hidden transition-all duration-500',
+                  'bg-ivory/90 backdrop-blur-sm border border-gold/40 shadow-sm',
+                  'ring-1 ring-inset ring-navy/5 group-hover:border-gold group-hover:shadow-md',
+                )}
+              >
+                <span
+                  aria-hidden="true"
+                  className="absolute inset-0 bg-no-repeat transition-transform duration-500 group-hover:scale-105"
+                  style={{
+                    backgroundImage: 'url(/oralis-logo.png)',
+                    backgroundSize: '303% 400%',
+                    backgroundPosition: '55% 22%',
+                  }}
+                />
+                <span aria-hidden="true" className="pointer-events-none absolute left-1 top-1 h-1.5 w-1.5 border-l border-t border-gold/70" />
+                <span aria-hidden="true" className="pointer-events-none absolute right-1 bottom-1 h-1.5 w-1.5 border-r border-b border-gold/70" />
               </span>
-              <span className="font-ui text-[10px] tracking-[0.25em] uppercase mt-0.5 text-stone/70">
-                Cultural Atlas
+              <span className="flex flex-col leading-none">
+                <span className="font-display text-2xl font-bold tracking-tight text-navy">
+                  Oralis
+                </span>
+                <span className="font-ui text-[10px] tracking-[0.25em] uppercase mt-0.5 text-stone/70">
+                  Cultural Atlas
+                </span>
               </span>
-            </span>
-          </Link>
+            </Link>
 
-          {/* Depth level indicator — subtle, left of logo */}
-          {!isHome && (
-            <div className="hidden lg:flex items-center gap-2 ml-6" aria-hidden="true">
-              <span className="font-ui text-[10px] tracking-[0.2em] uppercase text-gold/50">
-                {depth.level}
-              </span>
-            </div>
-          )}
+            {/* Subtle Secret Curator Trigger on the depth level */}
+            <Link
+              href="/admin/login"
+              className="hidden lg:inline-flex items-center gap-1.5 ml-4 px-2.5 py-1 rounded-full text-[10px] font-ui tracking-[0.2em] uppercase text-gold/40 hover:text-gold hover:bg-gold/10 transition-all focus-ring"
+              title="Curator Access (Shift+Alt+A)"
+              aria-label="Curator Access"
+            >
+              <span>{depth.level}</span>
+              <Lock className="w-2.5 h-2.5 opacity-30 hover:opacity-100 transition-opacity" />
+            </Link>
+          </div>
 
           {/* Desktop Links */}
           <div className="hidden md:flex items-center gap-6">
@@ -129,7 +151,7 @@ export default function Navigation() {
               </Link>
             ))}
 
-            {/* CTA — high contrast */}
+            {/* CTA */}
             <Link
               href="/contribute"
               className="ml-2 font-ui text-sm px-6 py-2.5 font-bold tracking-wide rounded-lg bg-gold text-navy hover:bg-gold-warm transition-all shadow-md focus-ring"
@@ -162,7 +184,7 @@ export default function Navigation() {
         </nav>
       </header>
 
-      {/* Mobile overlay — glassmorphism */}
+      {/* Mobile overlay */}
       <div
         ref={menuRef}
         className={cn(
@@ -206,6 +228,11 @@ export default function Navigation() {
             </Link>
             <Link href="/terms" className="font-ui text-xs text-ivory/50 hover:text-gold py-2 min-h-[44px] flex items-center">
               Terms & Privacy
+            </Link>
+            {/* Subtle Secret Curator link in mobile drawer */}
+            <Link href="/admin/login" className="font-ui text-xs text-ivory/30 hover:text-gold py-2 min-h-[44px] flex items-center gap-1">
+              <Lock className="w-3 h-3" />
+              <span>Curator</span>
             </Link>
           </div>
           

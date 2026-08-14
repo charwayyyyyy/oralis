@@ -2,27 +2,16 @@
  * app/api/contribution/create/route.ts
  *
  * POST /api/contribution/create
- *
- * Stores a contribution in DynamoDB with rate limiting, Zod validation,
- * contributor name, and a one-time delete token.
- *
- * DynamoDB structure:
- *   PK:      LANGUAGE#<languageId>
- *   SK:      CONTRIBUTION#<ISO timestamp>#<nanoid>
- *   GSI1PK:  FEED
- *   GSI1SK:  <ISO timestamp>   (enables global chronological feed)
- *
- * Returns:
- *   { success, contributionId, sk, deleteToken }
- *   deleteToken is shown once to the user — not stored retrievably.
+ * Stores a community contribution in DynamoDB as PENDING review.
  */
 
 import { NextRequest, NextResponse } from 'next/server'
 import { revalidatePath } from 'next/cache'
-import { PutCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb'
+import { PutCommand } from '@aws-sdk/lib-dynamodb'
 import { getDb, TABLE_NAME } from '@/lib/aws/dynamodb'
 import { rateLimit } from '@/lib/rate-limit'
 import { ContributionCreateSchema } from '@/lib/validations'
+import { logAuditEvent } from '@/lib/services/languages'
 
 export const runtime = 'nodejs'
 
@@ -31,11 +20,9 @@ function nanoid(len = 8): string {
 }
 
 export async function POST(req: NextRequest) {
-  // ── Rate limiting: 5 contributions per IP per minute ─────────────────────
   const limited = rateLimit(req, 5, 60_000)
   if (limited) return limited
 
-  // ── Parse body ────────────────────────────────────────────────────────────
   let raw: unknown
   try {
     raw = await req.json()
@@ -44,7 +31,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
   }
 
-  // ── Zod validation ────────────────────────────────────────────────────────
   const parsed = ContributionCreateSchema.safeParse(raw)
   if (!parsed.success) {
     const err = parsed.error as any
@@ -70,37 +56,36 @@ export async function POST(req: NextRequest) {
     contributorName,
   } = parsed.data
 
-  // ── Build item ────────────────────────────────────────────────────────────
   const now         = new Date().toISOString()
   const id          = nanoid()
-  const sk          = `CONTRIBUTION#${now}#${id}`
-  const deleteToken = crypto.randomUUID() // one-time delete secret
+  const sk          = `CONTRIBUTION:${now}#${id}`
+  const deleteToken = crypto.randomUUID()
 
   const item: Record<string, unknown> = {
-    // Primary key
-    PK:    `LANGUAGE#${languageId}`,
-    SK:    sk,
-    // GSI for global chronological feed
-    GSI1PK: 'FEED',
-    GSI1SK: now,
-    // Identity
+    PK:               `LANGUAGE#${languageId.trim()}`,
+    SK:               sk,
+    GSI1PK:           'FEED',
+    GSI1SK:           now,
     id,
-    languageId:      languageId.trim(),
-    languageName:    languageName?.trim() ?? languageId,
-    // Content
-    type:            contentType ?? 'vocabulary',
-    title:           title.trim(),
-    body:            body?.trim() ?? '',
-    context:         context.trim(),
-    source:          source?.trim() ?? '',
-    location:        location?.trim() ?? '',
-    audioS3Key:      audioS3Key ?? null,
-    // Contributor (no account required — just a name)
-    contributorName: contributorName.trim(),
-    // Delete secret — stored in DB; verified on delete
+    languageId:       languageId.trim(),
+    languageName:     languageName?.trim() ?? languageId,
+    type:             contentType ?? 'vocabulary',
+    title:            title.trim(),
+    body:             body?.trim() ?? '',
+    context:          context.trim(),
+    source:           source?.trim() ?? '',
+    location:         location?.trim() ?? '',
+    audioS3Key:       audioS3Key ?? null,
+    s3Key:            audioS3Key ?? null,
+    contributorName:  contributorName.trim(),
     deleteToken,
-    verified:  false,
-    createdAt: now,
+    verified:         false,
+    moderationStatus: 'PENDING',
+    visibility:       'ADMIN_ONLY',
+    moderationVersion: 1,
+    schemaVersion:    2,
+    createdAt:        now,
+    submittedAt:      now,
   }
 
   const db = getDb()
@@ -108,44 +93,40 @@ export async function POST(req: NextRequest) {
   try {
     const startTime = Date.now()
 
-    // 1. Save the contribution record
+    // 1. Save the pending contribution record
     await db.send(new PutCommand({ TableName: TABLE_NAME, Item: item }))
 
-    // 2. Atomic increment of language counters
-    const isStory = contentType === 'story'
-    await db.send(
-      new UpdateCommand({
-        TableName: TABLE_NAME,
-        Key: { PK: `LANGUAGE#${languageId}`, SK: 'META' },
-        UpdateExpression:
-          'ADD #countField :inc, #contributors :inc SET #lastUpdate = :now',
-        ExpressionAttributeNames: {
-          '#countField':   isStory ? 'storiesArchived' : 'audioCount',
-          '#contributors': 'contributors',
-          '#lastUpdate':   'lastContribution',
-        },
-        ExpressionAttributeValues: { ':inc': 1, ':now': now },
-      }),
-    )
+    // 2. Log audit trail
+    await logAuditEvent({
+      action: 'SUBMIT_CONTRIBUTION',
+      entityType: 'contribution',
+      entityId: id,
+      entityKey: { PK: `LANGUAGE#${languageId.trim()}`, SK: sk },
+      actorId: contributorName.trim(),
+      actorRole: 'contributor',
+      newState: {
+        title: item.title,
+        type: item.type,
+        hasAudio: !!audioS3Key,
+        moderationStatus: 'PENDING',
+      },
+      reason: 'New community contribution submitted',
+    })
 
-    console.info(`[API /contribution/create] Saved`, {
+    console.info(`[API /contribution/create] Saved pending contribution`, {
       id,
       sk,
       durationMs: Date.now() - startTime,
     })
-
-    // 3. Revalidate frontend paths
-    revalidatePath('/')
-    revalidatePath('/observatory')
-    revalidatePath('/explore')
 
     return NextResponse.json(
       {
         success: true,
         contributionId: id,
         sk,
-        PK:          item.PK,
-        deleteToken, // shown once to user — not recoverable
+        PK: item.PK,
+        deleteToken,
+        message: 'Your memory has been safely preserved in the Oralis cultural archive and submitted for preservation review.',
       },
       { status: 201 },
     )

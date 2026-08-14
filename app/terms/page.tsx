@@ -1,7 +1,7 @@
 import Link from 'next/link'
 
 export const metadata = {
-  title: 'Terms of Cultural Archiving — Oralis',
+  title: 'Terms of Cultural Archiving â Oralis',
   description: 'Terms of cultural preservation, Creative Commons licensing, community ownership, and platform stewardship on Oralis.',
 }
 
@@ -77,7 +77,7 @@ export default function TermsPage() {
         <div className="pt-6 border-t border-border/30 flex justify-between items-center flex-wrap gap-4 font-ui text-xs text-stone/60">
           <span>Effective: August 2026</span>
           <Link href="/privacy" className="text-gold hover:text-navy underline">
-            Read our Privacy Architecture →
+            Read our Privacy Architecture â
           </Link>
         </div>
       </div>
