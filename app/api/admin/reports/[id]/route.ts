@@ -11,7 +11,15 @@ interface Props {
   params: Promise<{ id: string }>
 }
 
-export async function PATCH(req: NextRequest, { params }: Props) {
+export async function POST(req: NextRequest, props: Props) {
+  return handleReportResolution(req, props)
+}
+
+export async function PATCH(req: NextRequest, props: Props) {
+  return handleReportResolution(req, props)
+}
+
+async function handleReportResolution(req: NextRequest, { params }: Props) {
   let session
   try {
     session = await requireAdmin()
@@ -38,7 +46,9 @@ export async function PATCH(req: NextRequest, { params }: Props) {
     return NextResponse.json({ error: messages }, { status: 400 })
   }
 
-  const { action, notes } = parsed.data
+  const resolvedAction = parsed.data.action || parsed.data.status || 'RESOLVED'
+  const action = resolvedAction.toUpperCase()
+  const notes = parsed.data.notes
   const db = getDb()
   const now = new Date().toISOString()
 
@@ -51,7 +61,7 @@ export async function PATCH(req: NextRequest, { params }: Props) {
       return NextResponse.json({ error: 'Report not found' }, { status: 404 })
     }
 
-    const nextStatus = action === 'DISMISS' ? 'DISMISSED' : 'RESOLVED'
+    const nextStatus = (action === 'DISMISS' || action === 'DISMISSED') ? 'DISMISSED' : 'RESOLVED'
 
     // If target action requested:
     if (action === 'RESOLVE_AND_HIDE' && report.targetType === 'contribution' && report.targetPK && report.targetSK) {

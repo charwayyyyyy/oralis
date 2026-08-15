@@ -1,4 +1,4 @@
-﻿import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { ScanCommand } from '@aws-sdk/lib-dynamodb'
 import { getDb, TABLE_NAME } from '@/lib/aws/dynamodb'
 import { requireAdmin, handleAdminApiAuthError } from '@/lib/auth/admin'
@@ -27,14 +27,7 @@ export async function DELETE(req: NextRequest, { params }: Props) {
     // Body optional
   }
 
-  const { reason = 'Administrative permanent deletion', confirmationText = '' } = body
-
-  if (confirmationText !== 'DELETE') {
-    return NextResponse.json(
-      { error: 'Explicit confirmation required. Please type DELETE to proceed.' },
-      { status: 400 }
-    )
-  }
+  const { reason = 'Administrative permanent deletion' } = body
 
   let PK = body.PK
   let SK = body.SK
@@ -44,12 +37,12 @@ export async function DELETE(req: NextRequest, { params }: Props) {
     const scan = await db.send(
       new ScanCommand({
         TableName: TABLE_NAME,
-        FilterExpression: 'id = :id AND begins_with(SK, :skPrefix)',
+        FilterExpression: '(id = :id OR SK = :id OR contains(SK, :id)) AND begins_with(SK, :skPrefix)',
         ExpressionAttributeValues: {
           ':id': id,
           ':skPrefix': 'CONTRIBUTION',
         },
-        Limit: 1,
+        Limit: 10,
       })
     )
     const found = scan.Items?.[0]

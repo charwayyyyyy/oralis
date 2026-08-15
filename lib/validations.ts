@@ -136,8 +136,11 @@ export type ContentReportCreateInput = z.infer<typeof ContentReportCreateSchema>
 
 // --- Report Resolution Schema ---------------------------------------
 export const ReportResolveSchema = z.object({
-  action: z.enum(['RESOLVE_AND_HIDE', 'RESOLVE_AND_DELETE', 'DISMISS']),
+  action: z.enum(['RESOLVE_AND_HIDE', 'RESOLVE_AND_DELETE', 'DISMISS', 'RESOLVED', 'DISMISSED']).optional(),
+  status: z.enum(['RESOLVED', 'DISMISSED', 'RESOLVE_AND_HIDE', 'RESOLVE_AND_DELETE', 'DISMISS']).optional(),
   notes:  z.string().max(500).optional(),
+}).refine((data) => Boolean(data.action || data.status), {
+  message: 'Either action or status must be provided',
 })
 
 export type ReportResolveInput = z.infer<typeof ReportResolveSchema>

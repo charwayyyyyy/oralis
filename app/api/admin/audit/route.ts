@@ -55,9 +55,12 @@ export async function GET(req: NextRequest) {
 
     items.sort((a, b) => new Date(b.timestamp || 0).getTime() - new Date(a.timestamp || 0).getTime())
 
+    const paged = items.slice(0, limit)
     return NextResponse.json({
       success: true,
-      auditLogs: items.slice(0, limit),
+      auditLogs: paged,
+      logs: paged,
+      items: paged,
       totalCount: items.length,
     })
   } catch (err) {

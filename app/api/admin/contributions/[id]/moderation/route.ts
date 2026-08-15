@@ -11,7 +11,15 @@ interface Props {
   params: Promise<{ id: string }>
 }
 
-export async function PATCH(req: NextRequest, { params }: Props) {
+export async function POST(req: NextRequest, props: Props) {
+  return handleModeration(req, props)
+}
+
+export async function PATCH(req: NextRequest, props: Props) {
+  return handleModeration(req, props)
+}
+
+async function handleModeration(req: NextRequest, { params }: Props) {
   let session
   try {
     session = await requireAdmin()
@@ -41,18 +49,18 @@ export async function PATCH(req: NextRequest, { params }: Props) {
   let PK = body.PK
   let SK = body.SK
 
-  // If PK and SK not provided, find by id
+  // If PK and SK not provided, find by id or SK
   if (!PK || !SK) {
     const db = getDb()
     const scan = await db.send(
       new ScanCommand({
         TableName: TABLE_NAME,
-        FilterExpression: 'id = :id AND begins_with(SK, :skPrefix)',
+        FilterExpression: '(id = :id OR SK = :id OR contains(SK, :id)) AND begins_with(SK, :skPrefix)',
         ExpressionAttributeValues: {
           ':id': id,
           ':skPrefix': 'CONTRIBUTION',
         },
-        Limit: 1,
+        Limit: 10,
       })
     )
     const found = scan.Items?.[0]

@@ -24,7 +24,7 @@ export default function LivePulse() {
         const data = await res.json()
         if (data.success && data.items.length > 0) {
           const formatted = data.items.map((c: any) => ({
-            contributor: c.contributorId || 'Anonymous Guardian',
+            contributor: c.contributorName || c.contributorId || 'Anonymous Guardian',
             action: c.type === 'audio' ? 'preserved a recording of' : c.type === 'story' ? 'archived an oral tradition in' : c.type === 'vocabulary' ? 'documented vocabulary in' : 'added cultural context for',
             language: c.languageName,
             title: c.text || c.title || 'New Contribution',

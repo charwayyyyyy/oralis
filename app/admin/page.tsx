@@ -86,6 +86,8 @@ export default function AdminOverviewPage() {
           body: JSON.stringify({
             action,
             reason,
+            PK: item.PK,
+            SK: item.SK,
             languageId: item.languageId || item.PK?.replace('LANGUAGE#', ''),
           }),
         })

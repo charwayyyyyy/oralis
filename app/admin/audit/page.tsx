@@ -21,7 +21,7 @@ export default function AdminAuditPage() {
       const res = await fetch('/api/admin/audit', { cache: 'no-store' })
       if (!res.ok) throw new Error('Failed to load audit trail')
       const json = await res.json()
-      setLogs(json.logs || [])
+      setLogs(json.logs || json.auditLogs || json.items || [])
     } catch (err: any) {
       setError(err.message || 'Error loading audit logs')
     } finally {

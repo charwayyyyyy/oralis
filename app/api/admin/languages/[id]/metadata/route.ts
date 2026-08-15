@@ -9,7 +9,15 @@ interface Props {
   params: Promise<{ id: string }>
 }
 
-export async function PATCH(req: NextRequest, { params }: Props) {
+export async function POST(req: NextRequest, props: Props) {
+  return handleMetadataUpdate(req, props)
+}
+
+export async function PATCH(req: NextRequest, props: Props) {
+  return handleMetadataUpdate(req, props)
+}
+
+async function handleMetadataUpdate(req: NextRequest, { params }: Props) {
   let session
   try {
     session = await requireAdmin()

@@ -16,7 +16,7 @@ export async function GET() {
   const db = getDb()
 
   try {
-    const [langRes, contribRes] = await Promise.all([
+    const [langRes, contribRes, auditRes] = await Promise.all([
       db.send(
         new ScanCommand({
           TableName: TABLE_NAME,
@@ -36,10 +36,21 @@ export async function GET() {
           },
         })
       ),
+      db.send(
+        new ScanCommand({
+          TableName: TABLE_NAME,
+          FilterExpression: 'begins_with(PK, :pkPrefix)',
+          ExpressionAttributeValues: {
+            ':pkPrefix': 'AUDIT#',
+          },
+          Select: 'COUNT',
+        })
+      ),
     ])
 
     const languages = langRes.Items || []
     const contributions = contribRes.Items || []
+    const totalAuditEntries = auditRes.Count || 0
 
     // 1. Vitality breakdown
     const vitalityCounts: Record<string, number> = {
@@ -59,7 +70,7 @@ export async function GET() {
       }
     })
 
-    // 2. Content Type breakdown
+    // 2. Content Type breakdown & Audio count
     const contentTypes: Record<string, number> = {
       vocabulary: 0,
       audio: 0,
@@ -67,12 +78,17 @@ export async function GET() {
       'cultural-context': 0,
     }
 
+    let audioContributions = 0
+
     contributions.forEach((c) => {
       const t = c.type || 'vocabulary'
       if (contentTypes[t] !== undefined) {
         contentTypes[t]++
       } else {
         contentTypes.vocabulary++
+      }
+      if (c.audioS3Key || c.s3Key || c.audioUrl) {
+        audioContributions++
       }
     })
 
@@ -96,11 +112,18 @@ export async function GET() {
       regionCounts[r] = (regionCounts[r] || 0) + 1
     })
 
+    const overview = {
+      totalLanguages: languages.length,
+      totalContributions: contributions.length,
+      audioContributions,
+      totalAuditEntries,
+    }
+
     return NextResponse.json({
       success: true,
       data: {
-        totalLanguages: languages.length,
-        totalContributions: contributions.length,
+        ...overview,
+        overview,
         vitalityBreakdown: vitalityCounts,
         contentTypeBreakdown: contentTypes,
         regionBreakdown: regionCounts,

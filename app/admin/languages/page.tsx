@@ -70,7 +70,7 @@ export default function AdminLanguagesPage() {
       const res = await fetch('/api/admin/languages', { cache: 'no-store' })
       if (!res.ok) throw new Error('Failed to load language registry')
       const json = await res.json()
-      setLanguages(json.languages || [])
+      setLanguages(json.languages || json.items || [])
     } catch (err: any) {
       setError(err.message || 'Network error loading languages')
     } finally {

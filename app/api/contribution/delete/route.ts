@@ -20,14 +20,28 @@ import { logAuditEvent } from '@/lib/services/languages'
 export const runtime = 'nodejs'
 
 export async function POST(req: NextRequest) {
+  return handleDelete(req)
+}
+
+export async function DELETE(req: NextRequest) {
+  return handleDelete(req)
+}
+
+async function handleDelete(req: NextRequest) {
   const limited = rateLimit(req, 10, 60_000)
   if (limited) return limited
 
-  let raw: unknown
+  let raw: any = {}
   try {
     raw = await req.json()
   } catch {
-    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
+    // If not JSON body, check URL searchParams
+    const url = new URL(req.url)
+    raw = {
+      PK: url.searchParams.get('PK') || '',
+      SK: url.searchParams.get('SK') || '',
+      token: url.searchParams.get('token') || '',
+    }
   }
 
   const parsed = DeleteByTokenSchema.safeParse(raw)

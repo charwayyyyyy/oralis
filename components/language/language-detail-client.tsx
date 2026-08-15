@@ -74,12 +74,51 @@ const DIMENSIONS = [
   { key: 'community', label: 'Community Engagement' },
 ]
 
-export default function LanguageDetailClient({ lang }: { lang: Language }) {
+export default function LanguageDetailClient({
+  lang,
+  initialContributions = [],
+}: {
+  lang: Language
+  initialContributions?: any[]
+}) {
   const [activeLayer, setActiveLayer] = useState<LayerId>('identity')
 
   const color = VITALITY_STATUS_COLORS[lang.status]
   const label = VITALITY_STATUS_LABELS[lang.status]
   const warmth = getVitalityWarmth(lang.vitalityScore)
+
+  const liveAudioClips = initialContributions
+    .filter((c) => Boolean(c.audioUrl))
+    .map((c) => ({
+      title: c.title,
+      duration: 'Audio Recording',
+      contributor: c.contributorName || 'Community Guardian',
+      date: new Date(c.createdAt || Date.now()).toLocaleDateString(),
+      src: c.audioUrl,
+    }))
+
+  const displayedRecordings = liveAudioClips.length > 0 ? liveAudioClips : RECORDINGS
+
+  const liveStories = initialContributions
+    .filter((c) => c.type === 'story')
+    .map((c) => ({
+      title: c.title,
+      category: 'Oral Tradition',
+      contributor: c.contributorName || 'Community Elder',
+      duration: c.context ? `${c.context.slice(0, 80)}...` : 'Oral story',
+    }))
+
+  const displayedStories = liveStories.length > 0 ? liveStories : STORIES
+
+  const liveRecent = initialContributions.map((c) => ({
+    id: c.id,
+    title: c.title,
+    contributor: c.contributorName || 'Anonymous Guardian',
+    date: new Date(c.createdAt || Date.now()).toLocaleDateString(),
+    verified: true,
+  }))
+
+  const displayedContributions = liveRecent.length > 0 ? liveRecent : RECENT_CONTRIBUTIONS.slice(0, 4)
 
   return (
     <div className="min-h-screen bg-background pt-[72px]">
@@ -310,7 +349,7 @@ export default function LanguageDetailClient({ lang }: { lang: Language }) {
               speaker carries meaning, emotion, and cadence that text alone cannot capture.
             </p>
             <div className="space-y-4">
-              {RECORDINGS.map((clip, i) => (
+              {displayedRecordings.map((clip, i) => (
                 <AudioPlayer key={i} {...clip} />
               ))}
             </div>
@@ -330,7 +369,7 @@ export default function LanguageDetailClient({ lang }: { lang: Language }) {
               cosmologies, ecological wisdom, moral codes, and histories that span millennia.
             </p>
             <div className="space-y-4">
-              {STORIES.map((story, i) => (
+              {displayedStories.map((story, i) => (
                 <div key={i} className="glass-heavy rounded-xl p-6 hover:shadow-lg transition-all group cursor-pointer">
                   <div className="flex items-start gap-5">
                     <div className="w-10 h-10 glass-gold rounded-lg flex items-center justify-center shrink-0 group-hover:bg-gold/15 transition-colors">
@@ -370,20 +409,20 @@ export default function LanguageDetailClient({ lang }: { lang: Language }) {
 
             <div className="flex items-center gap-4 glass-heavy rounded-xl p-6 mb-8">
               <div className="flex -space-x-2">
-                {Array.from({ length: Math.min(5, lang.contributors) }).map((_, i) => (
+                {Array.from({ length: Math.min(5, lang.contributors || 1) }).map((_, i) => (
                   <div key={i} className="w-8 h-8 rounded-full bg-navy/10 border-2 border-ivory flex items-center justify-center">
                     <span className="font-display text-xs font-bold text-navy/40">{String.fromCharCode(65 + i)}</span>
                   </div>
                 ))}
               </div>
               <span className="font-ui text-sm text-stone">
-                {lang.contributors} guardians have contributed to this archive
+                {lang.contributors || 1} guardian{lang.contributors === 1 ? '' : 's'} have contributed to this archive
               </span>
             </div>
 
             {/* Recent contributions */}
             <div className="space-y-4">
-              {RECENT_CONTRIBUTIONS.slice(0, 4).map((c: any) => (
+              {displayedContributions.slice(0, 8).map((c: any) => (
                 <div key={c.id} className="glass-heavy rounded-xl p-5 flex items-start gap-4">
                   <span className="w-2 h-2 rounded-full bg-gold mt-1.5 shrink-0" aria-hidden="true" />
                   <div className="flex-1">
@@ -393,7 +432,7 @@ export default function LanguageDetailClient({ lang }: { lang: Language }) {
                       <span>&middot;</span>
                       <span>{c.date}</span>
                       {c.verified && (
-                        <><span>&middot;</span><span className="text-green-700">Verified</span></>
+                        <><span>&middot;</span><span className="text-green-700 font-medium">Verified</span></>
                       )}
                     </div>
                   </div>

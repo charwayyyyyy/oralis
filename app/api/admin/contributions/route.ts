@@ -124,6 +124,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({
       success: true,
       items: itemsWithAudio,
+      contributions: itemsWithAudio,
       nextCursor,
       totalCount: items.length,
     })

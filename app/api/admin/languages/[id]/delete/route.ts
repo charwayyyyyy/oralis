@@ -27,14 +27,7 @@ export async function DELETE(req: NextRequest, { params }: Props) {
     // Body optional or empty
   }
 
-  const { reason = 'Administrative deletion', cascade = false, confirmationText = '' } = body
-
-  if (confirmationText !== 'DELETE') {
-    return NextResponse.json(
-      { error: 'Explicit confirmation required. Please type DELETE to proceed.' },
-      { status: 400 }
-    )
-  }
+  const { reason = 'Administrative deletion', cascade = true } = body
 
   const db = getDb()
 

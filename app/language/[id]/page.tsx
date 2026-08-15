@@ -10,7 +10,9 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import LanguageDetailClient from '@/components/language/language-detail-client'
-import { getLanguageById, getAllLanguages } from '@/lib/services/languages'
+import { getLanguageById, getAllLanguages, getLanguageContributions } from '@/lib/services/languages'
+import { getPresignedDownloadUrl } from '@/lib/aws/s3'
+import { serializePublicContribution } from '@/lib/contracts/contribution'
 import { LANGUAGES, VITALITY_STATUS_LABELS } from '@/lib/data'
 import { LanguageDatasetSchema } from '@/components/seo/structured-data'
 
@@ -116,6 +118,27 @@ export default async function LanguageDetailPage({ params }: Props) {
 
   if (!lang) notFound()
 
+  let contributions: any[] = []
+  try {
+    const raw = await getLanguageContributions(id, 100, false)
+    contributions = await Promise.all(
+      raw.map(async (c) => {
+        const s3Key = c.audioS3Key || c.s3Key
+        let audioUrl: string | null = c.audioUrl || null
+        if (s3Key && !audioUrl) {
+          try {
+            audioUrl = await getPresignedDownloadUrl(s3Key as string)
+          } catch (err) {
+            console.warn('[LanguageDetailPage] Failed to sign audio URL for', s3Key, err)
+          }
+        }
+        return serializePublicContribution(c, audioUrl)
+      })
+    )
+  } catch (err) {
+    console.warn('[LanguageDetailPage] Failed to load live contributions:', err)
+  }
+
   return (
     <>
       <LanguageDatasetSchema
@@ -135,7 +158,7 @@ export default async function LanguageDetailPage({ params }: Props) {
             : new Date().toISOString()
         }
       />
-      <LanguageDetailClient lang={lang} />
+      <LanguageDetailClient lang={lang} initialContributions={contributions} />
     </>
   )
 }

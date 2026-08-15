@@ -53,22 +53,30 @@ export default function AdminAnalyticsPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-white p-5 rounded-3xl border border-stone-200/80 shadow-sm">
           <span className="text-[11px] font-ui text-stone-500 uppercase font-semibold">Total Indexed Languages</span>
-          <div className="font-display font-bold text-3xl text-navy mt-1">{data?.overview?.totalLanguages || 0}</div>
+          <div className="font-display font-bold text-3xl text-navy mt-1">
+            {data?.overview?.totalLanguages ?? data?.totalLanguages ?? 0}
+          </div>
         </div>
 
         <div className="bg-white p-5 rounded-3xl border border-stone-200/80 shadow-sm">
           <span className="text-[11px] font-ui text-stone-500 uppercase font-semibold">Preserved Memories</span>
-          <div className="font-display font-bold text-3xl text-navy mt-1">{data?.overview?.totalContributions || 0}</div>
+          <div className="font-display font-bold text-3xl text-navy mt-1">
+            {data?.overview?.totalContributions ?? data?.totalContributions ?? 0}
+          </div>
         </div>
 
         <div className="bg-white p-5 rounded-3xl border border-stone-200/80 shadow-sm">
           <span className="text-[11px] font-ui text-stone-500 uppercase font-semibold">Audio Recordings</span>
-          <div className="font-display font-bold text-3xl text-navy mt-1">{data?.overview?.audioContributions || 0}</div>
+          <div className="font-display font-bold text-3xl text-navy mt-1">
+            {data?.overview?.audioContributions ?? data?.audioContributions ?? 0}
+          </div>
         </div>
 
         <div className="bg-white p-5 rounded-3xl border border-stone-200/80 shadow-sm">
           <span className="text-[11px] font-ui text-stone-500 uppercase font-semibold">Audited Actions</span>
-          <div className="font-display font-bold text-3xl text-navy mt-1">{data?.overview?.totalAuditEntries || 0}</div>
+          <div className="font-display font-bold text-3xl text-navy mt-1">
+            {data?.overview?.totalAuditEntries ?? data?.totalAuditEntries ?? 0}
+          </div>
         </div>
       </div>
 

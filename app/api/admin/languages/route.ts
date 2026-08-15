@@ -23,6 +23,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({
       success: true,
       items: result.items,
+      languages: result.items,
       nextCursor: result.nextCursor,
       totalEstimated: result.totalEstimated,
     })

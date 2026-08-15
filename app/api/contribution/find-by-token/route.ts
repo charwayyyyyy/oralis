@@ -13,7 +13,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { QueryCommand } from '@aws-sdk/lib-dynamodb'
+import { QueryCommand, ScanCommand } from '@aws-sdk/lib-dynamodb'
 import { getDb, TABLE_NAME } from '@/lib/aws/dynamodb'
 
 export const runtime = 'nodejs'
@@ -30,23 +30,19 @@ export async function GET(req: NextRequest) {
   const db = getDb()
 
   try {
-    // Query the FEED GSI and filter by deleteToken
-    // Limit to a reasonable page size — tokens are unique so we stop at 1
-    const result = await db.send(
-      new QueryCommand({
-        TableName:                 TABLE_NAME,
-        IndexName:                 'GSI1',
-        KeyConditionExpression:    'GSI1PK = :pk',
-        FilterExpression:          'deleteToken = :token',
+    // 1. First scan/query table for deleteToken
+    const scanResult = await db.send(
+      new ScanCommand({
+        TableName: TABLE_NAME,
+        FilterExpression: 'deleteToken = :token',
         ExpressionAttributeValues: {
-          ':pk':    'FEED',
           ':token': token,
         },
-        Limit: 100, // scan up to 100 items to find a match (token is unique)
-      }),
+        Limit: 10,
+      })
     )
 
-    const item = result.Items?.[0] ?? null
+    const item = scanResult.Items?.[0] ?? null
 
     if (!item) {
       return NextResponse.json({ error: 'No contribution found for this token.' }, { status: 404 })

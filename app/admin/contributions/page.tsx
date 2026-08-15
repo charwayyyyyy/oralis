@@ -51,7 +51,7 @@ export default function AdminContributionsPage() {
       const res = await fetch('/api/admin/contributions', { cache: 'no-store' })
       if (!res.ok) throw new Error('Failed to load contributions')
       const json = await res.json()
-      setContributions(json.contributions || [])
+      setContributions(json.contributions || json.items || [])
     } catch (err: any) {
       setError(err.message || 'Error loading contributions')
     } finally {
@@ -66,14 +66,21 @@ export default function AdminContributionsPage() {
   const handleModerate = async (
     id: string,
     action: 'APPROVE' | 'REJECT' | 'HIDE' | 'ARCHIVE' | 'RESTORE',
-    reason?: string
+    reason?: string,
+    contrib?: Contribution
   ) => {
     try {
       setActionLoading(true)
       const res = await fetch(`/api/admin/contributions/${id}/moderation`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action, reason }),
+        body: JSON.stringify({
+          action,
+          reason,
+          PK: contrib?.PK,
+          SK: contrib?.SK,
+          languageId: contrib?.languageId || contrib?.PK?.replace('LANGUAGE#', ''),
+        }),
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || 'Moderation failed')
@@ -245,14 +252,14 @@ export default function AdminContributionsPage() {
                   <div className="flex items-center gap-1">
                     {modStatus === 'APPROVED' ? (
                       <button
-                        onClick={() => handleModerate(id, 'HIDE')}
+                        onClick={() => handleModerate(id, 'HIDE', undefined, contrib)}
                         className="px-2.5 py-1 bg-stone-100 hover:bg-amber-50 hover:text-amber-700 text-stone-600 rounded-lg text-xs font-ui transition-colors"
                       >
                         Hide
                       </button>
                     ) : modStatus === 'HIDDEN' ? (
                       <button
-                        onClick={() => handleModerate(id, 'RESTORE')}
+                        onClick={() => handleModerate(id, 'RESTORE', undefined, contrib)}
                         className="px-2.5 py-1 bg-stone-100 hover:bg-emerald-50 hover:text-emerald-700 text-stone-600 rounded-lg text-xs font-ui transition-colors"
                       >
                         Restore
@@ -276,7 +283,7 @@ export default function AdminContributionsPage() {
                         Reject
                       </button>
                       <button
-                        onClick={() => handleModerate(id, 'APPROVE')}
+                        onClick={() => handleModerate(id, 'APPROVE', undefined, contrib)}
                         className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-ui font-semibold shadow-sm transition-transform active:scale-95"
                       >
                         Approve
@@ -303,7 +310,7 @@ export default function AdminContributionsPage() {
         onConfirm={(reason) => {
           if (!rejectingContrib) return
           const id = rejectingContrib.id || (rejectingContrib.SK ? rejectingContrib.SK.split('#')[1] : '')
-          handleModerate(id, 'REJECT', reason)
+          handleModerate(id, 'REJECT', reason, rejectingContrib)
         }}
         onCancel={() => setRejectingContrib(null)}
       />
